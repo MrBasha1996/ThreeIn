@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Three In — Recipe Costing</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=Noto+Sans+Arabic:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#111110;--ink2:#2c2c2a;--ink3:#4a4a47;--dust:#7a7a76;--smoke:#b0b0aa;
+  --fog:#deded8;--mist:#efefeb;--paper:#f7f7f4;--white:#ffffff;
+  --ok:#1a7f4b;--ok-bg:#e8f5ee;--warn:#9a6200;--warn-bg:#fff3d6;
+  --hot:#c0392b;--hot-bg:#fdecea;--info:#1a5a9a;--info-bg:#e6f0fb;
+  --app:#6b3fa0;--app-bg:#f2ecfb;
+  --r:7px;--rl:12px;--sw:280px;--bh:58px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Noto Sans Arabic","Sora",sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;line-height:1.5;font-size:14px}
+
+/* ── Topbar ── */
+.bar{height:var(--bh);background:var(--ink);display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;position:sticky;top:0;z-index:300}
+.logo{display:flex;align-items:center;gap:12px}
+.logo img{height:30px;filter:brightness(0) invert(1)}
+.logo-sep{width:1px;height:20px;background:rgba(255,255,255,.15)}
+.logo-lbl{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:.08em;font-family:"Sora",sans-serif;font-weight:300}
+.bar-r{display:flex;gap:6px;align-items:center}
+.cbadge{font-size:11px;color:rgba(255,255,255,.4);padding:3px 10px;border:1px solid rgba(255,255,255,.12);border-radius:20px}
+.tbtn{padding:6px 13px;border-radius:var(--r);font-size:12px;font-family:inherit;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.tbtn:hover{border-color:rgba(255,255,255,.5);color:#fff;background:rgba(255,255,255,.07)}
+.tbtn-p{background:var(--white);color:var(--ink);border-color:var(--white)}
+.tbtn-p:hover{background:var(--mist);color:var(--ink)}
+.tbtn.active-tab{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);color:#fff}
+
+/* ── Pages ── */
+.page{display:none}
+.page.show{display:flex}
+#pg-costing{flex-direction:row}
+#pg-products,#pg-ingredients{flex-direction:column;padding:2rem;max-width:860px;margin:0 auto;width:100%}
+
+/* ── Sidebar ── */
+.sb{background:var(--white);border-left:1px solid var(--fog);display:flex;flex-direction:column;height:calc(100vh - var(--bh));position:sticky;top:var(--bh);overflow:hidden;width:var(--sw);flex-shrink:0}
+.sb-hd{padding:.85rem 1rem .75rem;border-bottom:1px solid var(--fog)}
+.sb-lbl{font-size:10px;font-weight:600;color:var(--dust);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-family:"Sora",sans-serif}
+.sw-wrap{position:relative}
+.sw-wrap input{width:100%;padding:7px 10px 7px 28px;background:var(--paper);border:1px solid var(--fog);border-radius:var(--r);color:var(--ink);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s}
+.sw-wrap input:focus{border-color:var(--ink)}
+.sw-wrap input::placeholder{color:var(--smoke)}
+.si{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--smoke);font-size:13px;pointer-events:none}
+.ftabs{padding:7px 1rem;border-bottom:1px solid var(--fog);display:flex;gap:4px;flex-wrap:wrap}
+.ft{font-size:11px;padding:3px 9px;border-radius:4px;background:none;border:none;color:var(--dust);cursor:pointer;font-family:inherit;font-weight:500;transition:all .12s}
+.ft:hover{color:var(--ink);background:var(--mist)}
+.ft.on{background:var(--ink);color:var(--white)}
+.plist{overflow-y:auto;flex:1;padding:5px}
+.pi{padding:9px 10px;border-radius:var(--r);cursor:pointer;transition:all .12s;border:1px solid transparent;margin-bottom:2px}
+.pi:hover{background:var(--mist)}
+.pi.sel{background:var(--ink);border-color:var(--ink)}
+.pi.sel .pn{color:var(--white)}
+.pi.sel .psku,.pi.sel .pprice{color:rgba(255,255,255,.5)}
+.pi.sel .apptag{background:rgba(107,63,160,.3);color:#d4b8f5;border-color:transparent}
+.pi.saved{border-right:3px solid var(--ok)}
+.pi.sel.saved{border-right:3px solid #6ee7a8}
+.pn{font-size:13px;color:var(--ink);line-height:1.3}
+.pmeta{display:flex;gap:5px;margin-top:3px;align-items:center;flex-wrap:wrap}
+.psku{font-size:10px;font-family:"IBM Plex Mono",monospace;color:var(--smoke)}
+.pprice{font-size:11px;color:var(--ink2);font-weight:500}
+.apptag{font-size:9px;padding:1px 5px;border-radius:3px;background:var(--app-bg);color:var(--app);border:1px solid rgba(107,63,160,.2);font-weight:600}
+.savedtag{font-size:10px;color:var(--ok);font-weight:600}
+
+/* ── Main area ── */
+.main{padding:1.5rem 2rem;overflow-y:auto;background:var(--paper);flex:1}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid var(--fog);flex-wrap:wrap;gap:12px}
+.ph-l h2{font-size:18px;font-weight:500;margin-bottom:5px;font-family:"Sora",sans-serif}
+.phmeta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.phsku{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--smoke)}
+
+/* APP Checkbox */
+.app-check-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--mist);border-radius:var(--r);border:1px solid var(--fog);cursor:pointer;transition:all .15s;user-select:none}
+.app-check-row:hover{border-color:var(--app);background:var(--app-bg)}
+.app-check-row.checked{background:var(--app-bg);border-color:rgba(107,63,160,.3)}
+.app-check-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--app);cursor:pointer;flex-shrink:0}
+.app-check-lbl{font-size:12px;font-weight:500;color:var(--dust)}
+.app-check-row.checked .app-check-lbl{color:var(--app)}
+.app-price-row{display:flex;align-items:center;gap:8px;margin-top:8px;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* Price boxes */
+.price-row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.price-box{background:var(--white);border:1px solid var(--fog);border-radius:var(--r);padding:10px 14px;display:flex;flex-direction:column;gap:4px;min-width:110px}
+.price-box.app-box{background:var(--app-bg);border-color:rgba(107,63,160,.25)}
+.pb-lbl{font-size:10px;font-weight:600;color:var(--dust);text-transform:uppercase;letter-spacing:.05em;font-family:"Sora",sans-serif}
+.pb-lbl.app-lbl{color:var(--app)}
+.pb-inp{background:transparent;border:none;outline:none;font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:500;color:var(--ink);width:85px;text-align:right}
+.app-box .pb-inp{color:var(--app)}
+.pb-unit{font-size:11px;color:var(--dust)}
+.pb-diff{font-size:10px;font-family:"IBM Plex Mono",monospace}
+.yield-g{display:flex;align-items:center;gap:5px}
+.yield-g label{font-size:11px;color:var(--dust);font-weight:500}
+.yield-inp{background:var(--white);border:1px solid var(--fog);border-radius:var(--r);color:var(--ink);font-family:"IBM Plex Mono",monospace;outline:none;text-align:center;width:50px;padding:6px;font-size:13px}
+.yield-inp:focus{border-color:var(--ink)}
+
+/* Metrics */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem}
+.mc{background:var(--white);border:1px solid var(--fog);border-radius:var(--rl);padding:.9rem 1rem}
+.mc-lbl{font-size:10px;font-weight:600;color:var(--dust);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;font-family:"Sora",sans-serif}
+.mc-val{font-size:19px;font-weight:500;font-family:"IBM Plex Mono",monospace;color:var(--ink)}
+.mc-sub{font-size:10px;color:var(--smoke);margin-top:2px}
+
+/* FC Bar */
+.fcw{background:var(--white);border:1px solid var(--fog);border-radius:var(--rl);padding:.9rem 1.1rem;margin-bottom:1.25rem}
+.fc-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.fc-ttl{font-size:10px;font-weight:600;color:var(--dust);text-transform:uppercase;letter-spacing:.05em;font-family:"Sora",sans-serif}
+.fc-pill{font-size:11px;font-weight:600;padding:2px 10px;border-radius:4px}
+.fc-bg{height:7px;background:var(--mist);border-radius:4px;overflow:hidden;margin-bottom:5px}
+.fc-bar{height:100%;border-radius:4px;transition:width .4s ease,background .3s}
+.fc-zones{display:flex;justify-content:space-between;font-size:9px;color:var(--smoke);font-family:"IBM Plex Mono",monospace}
+
+/* Ingredients */
+.sec-ttl{font-size:10px;font-weight:600;color:var(--dust);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;font-family:"Sora",sans-serif;display:flex;align-items:center;justify-content:space-between}
+.ing-wrap{background:var(--white);border:1px solid var(--fog);border-radius:var(--rl);overflow:hidden;margin-bottom:1rem}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--paper);padding:8px 10px;text-align:right;font-size:10px;font-weight:600;color:var(--dust);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--fog);font-family:"Sora",sans-serif}
+tbody tr{border-bottom:1px solid var(--fog)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--paper)}
+td{padding:6px 8px;vertical-align:middle}
+.iinp,.qinp,.upinp{background:transparent;border:none;outline:none;color:var(--ink);font-family:inherit;font-size:13px;width:100%;padding:2px 4px;border-radius:4px}
+.iinp:focus,.qinp:focus,.upinp:focus{background:var(--paper);border:1px solid var(--fog)}
+.qinp,.upinp{font-family:"IBM Plex Mono",monospace;text-align:center}
+.usel{background:transparent;border:none;outline:none;color:var(--dust);font-family:inherit;font-size:12px;cursor:pointer;width:100%}
+.ccell{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink3);text-align:center}
+.drow{background:none;border:none;cursor:pointer;color:var(--smoke);padding:3px 5px;border-radius:4px;font-size:14px;line-height:1;transition:all .12s}
+.drow:hover{color:var(--hot);background:var(--hot-bg)}
+.add-btn{width:100%;padding:9px 14px;background:none;border:none;border-top:1px solid var(--fog);color:var(--dust);cursor:pointer;font-family:inherit;font-size:13px;transition:all .12s;display:flex;align-items:center;gap:6px;font-weight:500}
+.add-btn:hover{color:var(--ink);background:var(--mist)}
+
+/* Autocomplete */
+.acw{position:relative}
+.acl{position:absolute;top:calc(100% + 3px);right:0;left:0;z-index:400;background:var(--white);border:1px solid var(--fog);border-radius:var(--r);max-height:200px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.1);display:none}
+.acl.open{display:block}
+.acr{padding:7px 11px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--fog)}
+.acr:last-child{border-bottom:none}
+.acr:hover{background:var(--mist)}
+.act{font-size:10px;color:var(--dust);padding:1px 5px;background:var(--paper);border-radius:3px;border:1px solid var(--fog);white-space:nowrap}
+
+/* Saved cards */
+.saved-sec{margin-top:1.5rem}
+.saved-ttl{font-size:10px;font-weight:600;color:var(--dust);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;font-family:"Sora",sans-serif}
+.saved-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.scard{background:var(--white);border:1px solid var(--fog);border-radius:var(--rl);padding:.85rem 1rem;cursor:pointer;transition:all .15s;position:relative}
+.scard:hover{border-color:var(--ink);box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.sc-name{font-size:13px;font-weight:500;color:var(--ink);margin-bottom:5px;padding-left:24px;line-height:1.3}
+.sc-stats{display:flex;gap:5px;flex-wrap:wrap}
+.sc-s{font-size:11px;font-family:"IBM Plex Mono",monospace;color:var(--dust);background:var(--paper);padding:1px 6px;border-radius:3px}
+.scdel{position:absolute;top:8px;left:8px;background:none;border:none;cursor:pointer;color:var(--smoke);font-size:13px;padding:3px;border-radius:4px;transition:all .12s;line-height:1}
+.scdel:hover{color:var(--hot);background:var(--hot-bg)}
+
+/* ── Add pages ── */
+.pg-title{font-size:20px;font-weight:500;font-family:"Sora",sans-serif;margin-bottom:.35rem}
+.pg-sub{font-size:13px;color:var(--dust);margin-bottom:1.5rem}
+.form-card{background:var(--white);border:1px solid var(--fog);border-radius:var(--rl);padding:1.5rem;margin-bottom:1rem}
+.form-card h3{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:1rem;font-family:"Sora",sans-serif;padding-bottom:.6rem;border-bottom:1px solid var(--fog)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-grid.three{grid-template-columns:1fr 1fr 1fr}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;font-weight:600;color:var(--dust);text-transform:uppercase;letter-spacing:.04em;font-family:"Sora",sans-serif}
+.field input,.field select{padding:9px 12px;background:var(--paper);border:1px solid var(--fog);border-radius:var(--r);color:var(--ink);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus{border-color:var(--ink);background:var(--white)}
+.field input::placeholder{color:var(--smoke)}
+.check-field{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--paper);border:1px solid var(--fog);border-radius:var(--r);cursor:pointer;transition:all .15s}
+.check-field:hover{border-color:var(--app);background:var(--app-bg)}
+.check-field input[type=checkbox]{width:15px;height:15px;accent-color:var(--app);cursor:pointer}
+.check-field span{font-size:13px;color:var(--dust)}
+.app-price-field{display:none}
+.app-price-field.show{display:flex;flex-direction:column;gap:5px}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
+.btn-add{padding:9px 20px;background:var(--ink);color:var(--white);border:none;border-radius:var(--r);font-size:13px;font-family:inherit;font-weight:500;cursor:pointer;transition:all .15s}
+.btn-add:hover{background:var(--ink2)}
+.btn-cancel{padding:9px 16px;background:transparent;color:var(--dust);border:1px solid var(--fog);border-radius:var(--r);font-size:13px;font-family:inherit;cursor:pointer;transition:all .15s}
+.btn-cancel:hover{border-color:var(--ink);color:var(--ink)}
+.list-table-wrap{background:var(--white);border:1px solid var(--fog);border-radius:var(--rl);overflow:hidden}
+.list-table-wrap table thead th{font-size:11px}
+.del-row-btn{background:none;border:none;cursor:pointer;color:var(--smoke);padding:4px 6px;border-radius:4px;font-size:12px;transition:all .12s}
+.del-row-btn:hover{color:var(--hot);background:var(--hot-bg)}
+.app-badge-cell{font-size:10px;padding:1px 6px;border-radius:3px;background:var(--app-bg);color:var(--app);border:1px solid rgba(107,63,160,.2);font-weight:600;display:inline-block}
+.no-badge{font-size:11px;color:var(--smoke)}
+.empty-table{padding:2rem;text-align:center;color:var(--smoke);font-size:13px}
+.custom-badge{font-size:9px;padding:1px 5px;border-radius:3px;background:#fff3d6;color:#9a6200;border:1px solid rgba(154,98,0,.2);font-weight:600}
+
+/* Modal */
+.ov{position:fixed;inset:0;background:rgba(17,17,16,.6);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.ov.hidden{display:none}
+.modal{background:var(--white);border:1px solid var(--fog);border-radius:var(--rl);padding:1.75rem;width:430px;max-width:92vw;box-shadow:0 8px 40px rgba(0,0,0,.12)}
+.mhd{display:flex;align-items:center;gap:10px;margin-bottom:.85rem}
+.mhd h3{font-size:16px;font-weight:500;font-family:"Sora",sans-serif}
+.modal p{font-size:13px;color:var(--dust);margin-bottom:1.25rem;line-height:1.65}
+.step{display:flex;gap:10px;align-items:flex-start;margin-bottom:9px}
+.stepn{min-width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--white);font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.step span{font-size:13px;color:var(--ink);line-height:1.5}
+.mfoot{display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem;flex-wrap:wrap}
+.mbtn{padding:8px 16px;border-radius:var(--r);font-size:13px;font-family:inherit;font-weight:500;cursor:pointer;border:1px solid var(--fog);background:transparent;color:var(--dust);transition:all .15s}
+.mbtn:hover{border-color:var(--ink);color:var(--ink);background:var(--mist)}
+.mbtn-dr{border-color:#4285f4;color:#4285f4}
+.mbtn-dr:hover{background:#e8f0fe}
+.mbtn-p{background:var(--ink);color:var(--white);border-color:var(--ink)}
+.mbtn-p:hover{background:var(--ink2)}
+
+/* Toast */
+.tst{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--white);border-radius:8px;padding:10px 20px;font-size:13px;z-index:600;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.tst.show{opacity:1}
+
+.empty{text-align:center;padding:4rem 2rem;color:var(--smoke);display:flex;flex-direction:column;align-items:center;gap:12px}
+.empty-ic{width:48px;height:48px;border:2px solid var(--fog);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--fog)}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="bar">
+  <div class="logo">
+    <img src="data:image/jpeg;base64,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ndKD/wALT1nW7iTSRSYTe5h/5aiKP/53Lcs/hxT8TZPlOMcZYoy8WK7yWmMNs0dQ59SKlsTWsaQX9xbIzW9Dud/h8ra5fyAbDW8ZXHHaa1wWPIaU1Nb6FuZG2YGajjaWteBI1rviSG9oLgXMLh2hxAcU3rNkqD/+fxNdag68arvl/KErd4Z1PZTkGU2q0ycJ32lpq6sip31TKiR/ote4NLyDA0EDezsjwD5C2cvUDf47JFVvxqz0jpLYK71ZbgXU0YNY2mAL2j3+1vXggkApU84ZHc7lRWukorfaXVGU01vEplLpDTC6ClkZ2uboyPax2/o0uI0WgoLEog9kQEREBERAREQEREBERAREQEREBERAPsqCdSvT7yRcebrzdMVxqe7Wu+VPxcE8EjA1j3gGRshcQGEP7vJ8EEed7At/zJyxh3FNngr8pq5hJVl4o6Smi9SeoLAC7tGwABsbLiB5Hnyqg8odYub30S0mFW+mxijJIFQ/tqKtw377cOxmx8g0kfJ3zQWW4UxLGOn7iWGjye/WqhqqmT4m51tRUCOOScgDsjLtFzWgBoAGz5OgXELh+ResjArMJIMQtdfk1SPDZnbpKb/c8F5/TsAP1VecR4I5t5duYvt9jraWKfXddMhnka9zd7+wx25HDySNAN/MKyPGvR9x3j4iqcpqKzKqxuiWSuNPShwO/EbD3H9HOIP0QV/vPULz3yfcH2nEY6qjY/x8Jj9E50oaToF0unPbr6gtHutlivSdy3mNf+9c3u1PZTN5llr6k1tY76Eta4g+P8TwQr32GyWewW9lusdrorZRxjTIKSBsUY/ytAC2CCueD9H3F9kZHLkElzyapABd8RMYIe4fMMjIdr8i5y6nPW2TiGfC34jYrTZbbW35tLdW0lBG0yUzoJe5znhpcAzQkLtg6jOzrYMxrGrKCjrHxPq6WCd0JLojJGHdhLS0kbHglrnA6+RI+aCvWdWTKbpmeVUdmo8tZfI7iyso7lHO8UkUXoxRwGL1Puw7+s1LT6fsIn942Wk/I4gzzI7o2pyaogkh/eF0dLDX175mejVdga6JrPtNAiYYjGHx+ZH6IaO19kEQQlZOCJIZZKm45W90sroJj8PQsEkM0bY2d7JXbLT2RMAcwMd3dznF++0dB/BDC5YKmnrpLzWU9REIXQuuD4WBgcC0fc9h8MYyLZO+xuvdzy6TUQctDx5hkdnuNnOP0k1vucnq1tPUd0zJ3+oZe5weT5D3Eg/LQ+TRraU2NY7Sx22OnsNriZawW29rKRgFIDrYi8fdg6H4desWjRBp6bFMeprg+tgtVNG99I2j9NrfuWwtkdIGti/A3b3lxIAJ8bJ0NbJ1DQue17qOnc5r/Ua4xN2H7J7h499k+fzWQiAiIgIiICIiAiIgIiICIiAiIgIiICIiCHuo3gq38yTWGeov1RZ5rU+RrnRwCUTQydpc3RI7XAsGneR5OwfGtrxVwXxvxw2KWx2GKpuUY83Kv1PUk61triNM/wAgapMRAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREH/9k=" alt="Three In">
+    <div class="logo-sep"></div>
+    <span class="logo-lbl">Recipe Costing</span>
+  </div>
+  <div class="bar-r">
+    <span class="cbadge" id="cbadge">0 وصفة</span>
+    <span id="sync-indicator" style="font-size:11px;color:rgba(255,255,255,.4);padding:0 4px"></span>
+    <button class="tbtn" onclick="loadFromSheets()" title="تحميل من Sheets">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      تحميل من Sheets
+    </button>
+    <button class="tbtn active-tab" id="tab-costing" onclick="showPage('costing')">وصفات</button>
+    <button class="tbtn" id="tab-products" onclick="showPage('products')">+ منتج</button>
+    <button class="tbtn" id="tab-ingredients" onclick="showPage('ingredients')">+ مادة خام</button>
+    <button class="tbtn" onclick="openExport()">
+      <svg width="13" height="11" viewBox="0 0 87 78"><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="M43.65 25L29.9 1.2C28.55 2 27.4 3.1 26.6 4.5L1.2 48.5A9.06 9.06 0 000 53h27.5z" fill="#00ac47"/><path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z" fill="#ea4335"/><path d="M43.65 25l13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="M73.4 26.5L60.7 4.5c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25l16.15 27H87.2c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+      تصدير
+    </button>
+    <button class="tbtn tbtn-p" id="sbtn" onclick="saveRecipe()">حفظ الوصفة</button>
+  </div>
+</div>
+
+<!-- Page: Costing -->
+<div class="page show" id="pg-costing">
+  <aside class="sb">
+    <div class="sb-hd">
+      <div class="sb-lbl">المنتجات</div>
+      <div class="sw-wrap">
+        <span class="si">⌕</span>
+        <input type="text" id="sq" placeholder="ابحث بالاسم أو SKU..." oninput="rl()">
+      </div>
+    </div>
+    <div class="ftabs">
+      <button class="ft on" onclick="sf('all',this)">الكل</button>
+      <button class="ft" onclick="sf('saved',this)">✓ محفوظ</button>
+    </div>
+    <div class="plist" id="plist"></div>
+  </aside>
+  <main class="main" id="main">
+    <div class="empty"><div class="empty-ic">≡</div><p>اختر منتجاً لبدء تعبئة المكونات</p></div>
+  </main>
+</div>
+
+<!-- Page: Add Product -->
+<div class="page" id="pg-products">
+  <h1 class="pg-title">إضافة منتج جديد</h1>
+  <p class="pg-sub">أضف منتجات جديدة إلى القائمة — تُحفظ محلياً وتظهر في قائمة الوصفات</p>
+  <div class="form-card">
+    <h3>بيانات المنتج</h3>
+    <div class="form-grid">
+      <div class="field">
+        <label>اسم المنتج</label>
+        <input type="text" id="np-name" placeholder="مثال: Smash Burger Triple">
+      </div>
+      <div class="field">
+        <label>SKU</label>
+        <input type="text" id="np-sku" placeholder="مثال: sk-0300">
+      </div>
+      <div class="field">
+        <label>سعر Dine In (ريال)</label>
+        <input type="number" id="np-price" placeholder="0.00" min="0" step="0.5">
+      </div>
+      <div class="field">
+        <label>متوفر على APP؟</label>
+        <label class="check-field" id="np-app-toggle" onclick="toggleAppField('np')">
+          <input type="checkbox" id="np-app-check" onchange="toggleAppField('np')">
+          <span>نعم، متوفر على التطبيق</span>
+        </label>
+      </div>
+      <div class="field app-price-field" id="np-app-price-wrap">
+        <label>سعر APP (ريال)</label>
+        <input type="number" id="np-app-price" placeholder="0.00" min="0" step="0.5">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="document.getElementById('np-name').value='';document.getElementById('np-sku').value='';document.getElementById('np-price').value='';document.getElementById('np-app-price').value='';document.getElementById('np-app-check').checked=false;toggleAppField('np')">مسح</button>
+      <button class="btn-add" onclick="addProduct()">إضافة المنتج ＋</button>
+    </div>
+  </div>
+  <div class="form-card" style="padding:0">
+    <div style="padding:1rem 1.5rem;border-bottom:1px solid var(--fog);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:600;font-family:'Sora',sans-serif">المنتجات المضافة يدوياً</span>
+      <span id="custom-p-count" style="font-size:12px;color:var(--dust)">0 منتج</span>
+    </div>
+    <div id="custom-products-table">
+      <div class="empty-table">لا توجد منتجات مضافة بعد</div>
+    </div>
+  </div>
+</div>
+
+<!-- Page: Add Ingredient -->
+<div class="page" id="pg-ingredients">
+  <h1 class="pg-title">إضافة مادة خام جديدة</h1>
+  <p class="pg-sub">أضف مواد خام جديدة — تُحفظ محلياً وتظهر في قائمة مكونات الوصفة</p>
+  <div class="form-card">
+    <h3>بيانات المادة الخام</h3>
+    <div class="form-grid three">
+      <div class="field">
+        <label>اسم المادة</label>
+        <input type="text" id="ni-name" placeholder="مثال: زبدة فول سوداني">
+      </div>
+      <div class="field">
+        <label>SKU</label>
+        <input type="text" id="ni-sku" placeholder="مثال: sk-0400">
+      </div>
+      <div class="field">
+        <label>التصنيف</label>
+        <select id="ni-cat">
+          <option value="بقالة">بقالة</option>
+          <option value="لحوم">لحوم</option>
+          <option value="دجاج">دجاج</option>
+          <option value="اسماك">اسماك</option>
+          <option value="خضار">خضار</option>
+          <option value="اجبان">اجبان</option>
+          <option value="مخبوزات">مخبوزات</option>
+          <option value="بهارات">بهارات</option>
+          <option value="صلصات & صوصات">صلصات وصوصات</option>
+          <option value="زيوت">زيوت</option>
+          <option value="مشروبات">مشروبات</option>
+          <option value="مصنع">مصنع</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>وحدة القياس</label>
+        <select id="ni-unit">
+          <option>جرام</option><option>كيلو</option><option>ميليلتر</option>
+          <option>لتر</option><option>حبة</option><option>قطعة</option>
+          <option>زجاجة</option><option>مليلتر</option><option>علبة</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>سعر الوحدة (ريال)</label>
+        <input type="number" id="ni-cost" placeholder="0.000" min="0" step="0.001">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="document.getElementById('ni-name').value='';document.getElementById('ni-sku').value='';document.getElementById('ni-cost').value=''">مسح</button>
+      <button class="btn-add" onclick="addIngredient()">إضافة المادة ＋</button>
+    </div>
+  </div>
+  <div class="form-card" style="padding:0">
+    <div style="padding:1rem 1.5rem;border-bottom:1px solid var(--fog);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:600;font-family:'Sora',sans-serif">المواد المضافة يدوياً</span>
+      <span id="custom-i-count" style="font-size:12px;color:var(--dust)">0 مادة</span>
+    </div>
+    <div id="custom-ings-table">
+      <div class="empty-table">لا توجد مواد مضافة بعد</div>
+    </div>
+  </div>
+</div>
+
+<!-- Drive Modal -->
+<div class="ov hidden" id="modal">
+  <div class="modal">
+    <div class="mhd">
+      <svg width="20" height="18" viewBox="0 0 87 78"><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="M43.65 25L29.9 1.2C28.55 2 27.4 3.1 26.6 4.5L1.2 48.5A9.06 9.06 0 000 53h27.5z" fill="#00ac47"/><path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z" fill="#ea4335"/><path d="M43.65 25l13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="M73.4 26.5L60.7 4.5c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25l16.15 27H87.2c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+      <h3>حفظ إلى Google Drive</h3>
+    </div>
+    <p>تم الحفظ. لرفع الملف إلى Drive:</p>
+    <div class="step"><div class="stepn">1</div><span>اضغط <strong>تحميل Excel</strong> — سيُنزَّل الملف بجميع الوصفات والمكونات</span></div>
+    <div class="step"><div class="stepn">2</div><span>اضغط <strong>فتح Drive</strong> ثم اسحب الملف أو اضغط <strong>+ جديد ← رفع ملف</strong></span></div>
+    <div class="mfoot">
+      <button class="mbtn" onclick="closeModal()">لاحقاً</button>
+      <button class="mbtn mbtn-dr" onclick="window.open('https://drive.google.com','_blank')">فتح Drive ↗</button>
+      <button class="mbtn mbtn-p" onclick="dlExcel()">تحميل Excel ⬇</button>
+    </div>
+  </div>
+</div>
+
+<div class="tst" id="tst"></div>
+
+<script>
+// ── Base data from Excel ──────────────────────────────────────────
+const BASE = {"products":[{"name":"American lettuce","sku":"sk-0288","category":"DINE IN & TO GO","price":2.0},{"name":"Extra Tenderloin","sku":"sk-0287","category":"DINE IN & TO GO","price":16.0},{"name":"BMT L","sku":"sk-0286","category":"DINE IN & TO GO","price":26.0},{"name":"Cheesesteak Tenderloin L Meal + soft drink + fries","sku":"sk-0284","category":"DINE IN & TO GO","price":53.0,"app_price":56.0},{"name":"Cheesesteak Tenderloin R Meal + soft drink + fries","sku":"sk-0282","category":"DINE IN & TO GO","price":43.0,"app_price":46.0},{"name":"BMT L","sku":"sk-0279","category":"DINE IN & TO GO","price":36.0},{"name":"Ice cream L","sku":"sk-0278","category":"DINE IN & TO GO","price":12.0},{"name":"CheesesSteak Tenderloin L","sku":"sk-0276","category":"DINE IN & TO GO","price":43.0,"app_price":46.0},{"name":"CheesesSteak Tenderloin R","sku":"sk-0275","category":"DINE IN & TO GO","price":33.0,"app_price":36.0},{"name":"National Day Offer 2 Milkshakes","sku":"sk-0272","category":"DINE IN & TO GO","price":35.0},{"name":"National Day Offer 2 chicken burgers + 2 fries + 2 Pepsi","sku":"sk-0271","category":"DINE IN & TO GO","price":75.0},{"name":"National Day Offer 2 double burgers + 2 fries + 2 Pepsi","sku":"sk-0270","category":"DINE IN & TO GO","price":85.0},{"name":"National Day Offer 2 Regular Steaks + 2 Fries + Pepsi","sku":"sk-0269","category":"DINE IN & TO GO","price":95.0},{"name":"Staff meal burger +fries+pepsi","sku":"sk-0267","category":"DINE IN & TO GO","price":24.0},{"name":"staff meal omelet +fries +pepsi","sku":"sk-0266","category":"DINE IN & TO GO","price":15.0},{"name":"staff meal chicken +fries+pepsi","sku":"sk-0265","category":"DINE IN & TO GO","price":17.0},{"name":"sweet potato","sku":"sk-0264","category":"DINE IN & TO GO","price":15.0,"app_price":15.0},{"name":"BBQ fries with Vimto shake","sku":"sk-0263","category":"DINE IN & TO GO","price":20.0},{"name":"Sambosa 3 pcs","sku":"sk-0262","category":"DINE IN & TO GO","price":4.0},{"name":"Ramadan offer (large steak sand.)","sku":"sk-0261","category":"DINE IN & TO GO","price":85.0},{"name":"Ramadan offer (regular steak sand)","sku":"sk-0260","category":"DINE IN & TO GO","price":75.0},{"name":"Ramadan offer (double burger)","sku":"sk-0259","category":"DINE IN & TO GO","price":65.0},{"name":"Ramadan Offer (single burger)","sku":"sk-0258","category":"DINE IN & TO GO","price":55.0},{"name":"MEAL B -D +soft drink + fries","sku":"sk-0253","category":"DINE IN & TO GO","price":49.0,"app_price":52.0},{"name":"MEAL B-S +soft drink+ fries","sku":"sk-0252","category":"DINE IN & TO GO","price":39.0,"app_price":42.0},{"name":"Mix cheese","sku":"sk-0232","category":"DINE IN & TO GO","price":6.0},{"name":"Red chili sauce","sku":"sk-0231","category":"DINE IN & TO GO","price":6.0},{"name":"CHEESE FRIES","sku":"sk-0230","category":"DINE IN & TO GO","price":21.0,"app_price":21.0},{"name":"Honey BBQ sauce","sku":"sk-0222","category":"DINE IN & TO GO","price":5.0},{"name":"MilkShake Red velvet","sku":"sk-0221","category":"DINE IN & TO GO","price":24.0},{"name":"Extra Meat","sku":"sk-0220","category":"DINE IN & TO GO","price":25.0,"app_price":27.0},{"name":"Extra cheese","sku":"sk-0214","category":"DINE IN & TO GO","price":2.0},{"name":"Caramelized onion","sku":"sk-0213","category":"DINE IN & TO GO","price":3.0,"app_price":3.0},{"name":"Crispy onion","sku":"sk-0212","category":"DINE IN & TO GO","price":3.0,"app_price":3.0},{"name":"Extra Cajun","sku":"sk-0211","category":"DINE IN & TO GO","price":1.0,"app_price":1.0},{"name":"Hony mustard sauce","sku":"sk-0209","category":"DINE IN & TO GO","price":6.0,"app_price":7.0},{"name":"Truffle sauce","sku":"sk-0189","category":"DINE IN & TO GO","price":7.0,"app_price":7.0},{"name":"honey mustard crispy chicken","sku":"sk-0188","category":"DINE IN & TO GO","price":32.0,"app_price":36.0},{"name":"Mashed potato plain","sku":"sk-0178","category":"DINE IN & TO GO","price":10.0,"app_price":10.0},{"name":"ذرة-SWEET CORN","sku":"sk-0155","category":"DINE IN & TO GO","price":15.0,"app_price":16.0},{"name":"Mashed potato with mushroom","sku":"sk-0154","category":"DINE IN & TO GO","price":16.0,"app_price":16.0},{"name":"mushroom sauce","sku":"sk-0153","category":"DINE IN & TO GO","price":8.0,"app_price":8.0},{"name":"CHOCO MILK SHAKE","sku":"sk-0152","category":"DINE IN & TO GO","price":21.0,"app_price":24.0},{"name":"Milk shake vanilla (half)","sku":"sk-0145","category":"DINE IN & TO GO","price":14.0},{"name":"Cheese fries with steak","sku":"sk-0143","category":"DINE IN & TO GO","price":44.0,"app_price":44.0},{"name":"MilkShake peantbutter","sku":"sk-0140","category":"DINE IN & TO GO","price":24.0},{"name":"Milkshake strawberry","sku":"sk-0139","category":"DINE IN & TO GO","price":24.0},{"name":"MilkShake oreo","sku":"sk-0138","category":"DINE IN & TO GO","price":24.0,"app_price":24.0},{"name":"Beyond Burger","sku":"sk-0137","category":"DINE IN & TO GO","price":46.0,"app_price":49.0},{"name":"MilkShake vanillia","sku":"sk-0124","category":"DINE IN & TO GO","price":21.0},{"name":"Soft Drinks","sku":"sk-0119","category":"DINE IN & TO GO","price":6.0,"app_price":6.0},{"name":"Sparkling Water","sku":"sk-0118","category":"DINE IN & TO GO","price":9.0,"app_price":9.0},{"name":"Water","sku":"sk-0117","category":"DINE IN & TO GO","price":4.0,"app_price":4.0},{"name":"Smash burger Sauce","sku":"sk-0113","category":"DINE IN & TO GO","price":5.0,"app_price":5.0},{"name":"Red Sauce","sku":"sk-0112","category":"DINE IN & TO GO","price":5.0,"app_price":5.0},{"name":"White Sauce","sku":"sk-0111","category":"DINE IN & TO GO","price":5.0,"app_price":5.0},{"name":"CheeseSteak Black Angus L","sku":"sk-0110","category":"DINE IN & TO GO","price":58.0,"app_price":59.0},{"name":"CheeseSteak Black Angus R","sku":"sk-0109","category":"DINE IN & TO GO","price":48.0,"app_price":49.0},{"name":"Smashed Burger L","sku":"sk-0108","category":"DINE IN & TO GO","price":39.0,"app_price":43.0},{"name":"Smashed Burger R","sku":"sk-0107","category":"DINE IN & TO GO","price":29.0,"app_price":33.0},{"name":"Cajun Fries","sku":"sk-0106","category":"DINE IN & TO GO","price":15.0,"app_price":16.0},{"name":"Regular Fries","sku":"sk-0105","category":"DINE IN & TO GO","price":13.0,"app_price":14.0},{"name":"Meal for one person","sku":"sk-0187","category":"DINE IN & TO GO","price":40.0,"app_price":40.0},{"name":"Jalapeño","sku":"sk-0176","category":"DINE IN & TO GO","price":3.0,"app_price":3.0},{"name":"Beyond sauce","sku":"sk-0157","category":"DINE IN & TO GO","price":5.0,"app_price":5.0},{"name":"MilkShake","sku":"sk-0127","category":"DINE IN & TO GO","price":23.0,"app_price":23.0}],"ingredients":[{"name":"شو كلاته حبوب هيرش","sku":"sk-0182","unit":"جرام","cost":0.099381,"category":"بقالة"},{"name":"بيض عادي","sku":"sk-0102","unit":"حبة","cost":0.433333,"category":"بقالة"},{"name":"كارميل","sku":"sk-0025","unit":"جرام","cost":0.026086,"category":"بقالة"},{"name":"زيت دلال تنك","sku":"sk-0035","unit":"ميليلتر","cost":0.005059,"category":"زيوت"},{"name":"مايونيز كبير","sku":"sk-0181","unit":"جرام","cost":0.016204,"category":"صلصات & صوصات"},{"name":"صدور دجاج تندر 2.5*4","sku":"sk-0192","unit":"جرام","cost":0.018115,"category":"دجاج"},{"name":"لحم تشاك رول ارجنتيني","sku":"sk-0004","unit":"جرام","cost":0.039634,"category":"لحوم"},{"name":"لحم بلاك انجوس ريب اي ارجنتيني","sku":"sk-0003","unit":"جرام","cost":0.10073,"category":"لحوم"},{"name":"CHOCOLATE SAUCE -FACTORY","sku":"sk-0105","unit":"ميليلتر","cost":0.006449,"category":"مشروبات"},{"name":"مياة نوفا غازية","sku":"sk-0005","unit":"زجاجة","cost":2.083333,"category":"مشروبات"},{"name":"مياة نوفا عادي","sku":"sk-0002","unit":"زجاجة","cost":1.27,"category":"مشروبات"},{"name":"مشروب غازي","sku":"sk-0001","unit":"زجاجة","cost":1.96172,"category":"مشروبات"},{"name":"جبنة شيدر سائلة بيضاء المراعي","sku":"sk-0239","unit":"جرام","cost":0.031316,"category":"اجبان"},{"name":"جبنة شيدر بيضاء","sku":"sk-0238","unit":"جرام","cost":0.057107,"category":"اجبان"},{"name":"جبنة شيدر حمراء","sku":"sk-0237","unit":"جرام","cost":0.055789,"category":"اجبان"},{"name":"صلصة جبنة الشيدر ريليانس معتق 3 كيلو","sku":"sk-0193","unit":"جرام","cost":0.012478,"category":"اجبان"},{"name":"جبنة شيدر شرائح","sku":"sk-0010","unit":"جرام","cost":0.031379,"category":"اجبان"},{"name":"بسكوت زبدة فول سوداني","sku":"sk-0098","unit":"حبة","cost":2.460819,"category":"بقالة"},{"name":"سكر ابيض ناعم","sku":"sk-0084","unit":"جرام","cost":0.005014,"category":"بقالة"},{"name":"بسكوت اوريو كلاسيك","sku":"sk-0038","unit":"حبة","cost":0.573719,"category":"بقالة"},{"name":"بانسوفت ايس كريم","sku":"sk-0023","unit":"جرام","cost":0.055202,"category":"بقالة"},{"name":"حليب نادك","sku":"sk-0009","unit":"مليلتر","cost":0.003913,"category":"بقالة"},{"name":"بهارات فرشلي","sku":"sk-0256","unit":"جرام","cost":0.077788,"category":"بهارات"},{"name":"شيلي بودر","sku":"sk-0235","unit":"جرام","cost":0.009837,"category":"بهارات"},{"name":"فلفل مجروش","sku":"sk-0233","unit":"جرام","cost":0.352448,"category":"بهارات"},{"name":"باربيكا مدخنة بودرة","sku":"sk-0186","unit":"جرام","cost":0.39304,"category":"بهارات"},{"name":"بصل مطحون فرشلي","sku":"sk-0092","unit":"جرام","cost":0.390491,"category":"بهارات"},{"name":"ثوم مطحون","sku":"sk-0081","unit":"جرام","cost":0.050377,"category":"بهارات"},{"name":"توابل الكيجن","sku":"sk-0030","unit":"جرام","cost":0.138067,"category":"بهارات"},{"name":"نشاء ابيض","sku":"sk-0019","unit":"جرام","cost":0.001615,"category":"بهارات"},{"name":"ملح خشن","sku":"sk-0016","unit":"جرام","cost":0.002064,"category":"بهارات"},{"name":"بانكو كبير","sku":"sk-0013","unit":"جرام","cost":0.025,"category":"بهارات"},{"name":"ملح طبخ","sku":"sk-0011","unit":"جرام","cost":0.010559,"category":"بهارات"},{"name":"بطاط حلوة","sku":"sk-0255","unit":"جرام","cost":0.018046,"category":"خضار"},{"name":"خس مدور اسباني","sku":"sk-0252","unit":"جرام","cost":0.0098,"category":"خضار"},{"name":"جزر","sku":"sk-0211","unit":"جرام","cost":0.005599,"category":"خضار"},{"name":"ملفوف احمر (كرنب)","sku":"sk-0210","unit":"جرام","cost":0.0058,"category":"خضار"},{"name":"ملفوف ابيض (كرنب)","sku":"sk-0209","unit":"جرام","cost":0.003842,"category":"خضار"},{"name":"ليمون كبير","sku":"sk-0207","unit":"جرام","cost":0.007267,"category":"خضار"},{"name":"خيار مخلل","sku":"sk-0183","unit":"جرام","cost":0.026659,"category":"خضار"},{"name":"فطر ابيض - ماشروم","sku":"sk-0042","unit":"جرام","cost":0.027824,"category":"خضار"},{"name":"فلفل رومي اخضر","sku":"sk-0041","unit":"جرام","cost":0.006505,"category":"خضار"},{"name":"بطاطس عادي","sku":"sk-0040","unit":"جرام","cost":0.003806,"category":"خضار"},{"name":"بصل","sku":"sk-0039","unit":"جرام","cost":0.005445,"category":"خضار"},{"name":"هلابينو","sku":"sk-0024","unit":"جرام","cost":0.012117,"category":"خضار"},{"name":"زيت الكماه السوداء","sku":"sk-0185","unit":"ميليلتر","cost":0.273138,"category":"زيوت"},{"name":"زبدة نادك","sku":"sk-0087","unit":"جرام","cost":0.164004,"category":"زيوت"},{"name":"كريمة طبخ المراعي","sku":"sk-0086","unit":"ميليلتر","cost":0.016139,"category":"زيوت"},{"name":"زيت عادي صويا","sku":"sk-0036","unit":"ميليلتر","cost":0.008511,"category":"زيوت"},{"name":"زيت العافية","sku":"sk-0021","unit":"ميليلتر","cost":0.005093,"category":"زيوت"},{"name":"كاتشب هانز","sku":"sk-0214","unit":"جرام","cost":0.029441,"category":"صلصات & صوصات"},{"name":"صلصة الباربيكيو","sku":"sk-0037","unit":"جرام","cost":0.022059,"category":"صلصات & صوصات"},{"name":"مايونيز","sku":"sk-0031","unit":"جرام","cost":0.040816,"category":"صلصات & صوصات"},{"name":"خردل صغير","sku":"sk-0029","unit":"جرام","cost":0.031204,"category":"صلصات & صوصات"},{"name":"صلصة ورشستر","sku":"sk-0028","unit":"جرام","cost":0.038691,"category":"صلصات & صوصات"},{"name":"عسل","sku":"sk-0027","unit":"جرام","cost":0.032156,"category":"صلصات & صوصات"},{"name":"توباسكو","sku":"sk-0026","unit":"جرام","cost":0.04767,"category":"صلصات & صوصات"},{"name":"كاتشب كبير","sku":"sk-0015","unit":"جرام","cost":0.008753,"category":"صلصات & صوصات"},{"name":"دقيق ابيض","sku":"sk-0017","unit":"جرام","cost":0.001593,"category":"مخبوزات"},{"name":"خبز بريوش برجر","sku":"sk-0008","unit":"حبة","cost":1.59835,"category":"مخبوزات"},{"name":"خبز بريوش صغير","sku":"sk-0007","unit":"حبة","cost":1.55,"category":"مخبوزات"},{"name":"خبز بريوش كبير","sku":"sk-0006","unit":"حبة","cost":1.65,"category":"مخبوزات"},{"name":"سيروب استروبري","sku":"sk-0043","unit":"ميليلتر","cost":0.048926,"category":"مشروبات"},{"name":"تشيلي صوص احمر - مصنع","sku":"sk-0240","unit":"جرام","cost":0.03746,"category":"مصنع"},{"name":"فلفل مجروش + سيراشا بودر","sku":"sk-0232","unit":"جرام","cost":0.1365,"category":"مصنع"},{"name":"صوص الملفوف -مصنع","sku":"sk-0199","unit":"جرام","cost":0.004599,"category":"مصنع"},{"name":"لحم تشاك رول ارجنتيني برجر - مصنع","sku":"sk-0077","unit":"جرام","cost":0.039883,"category":"مصنع"},{"name":"بصل مكرمل - مصنع","sku":"sk-0094","unit":"جرام","cost":0,"category":"مصنع"},{"name":"لحم برجر مكس سماش - مصنع","sku":"sk-0090","unit":"جرام","cost":0,"category":"مصنع"},{"name":"صوص هاني ماسترد- مصنع","sku":"sk-0083","unit":"جرام","cost":0,"category":"مصنع"},{"name":"صوص سماش برجر - مصنع","sku":"sk-0080","unit":"جرام","cost":0,"category":"مصنع"},{"name":"صوص ابيض استك - مصنع","sku":"sk-0079","unit":"جرام","cost":0,"category":"مصنع"},{"name":"ماشروم صوص - مصنع","sku":"sk-0107","unit":"جرام","cost":0,"category":"مصنع"},{"name":"بطاط مهروسة -مصنع","sku":"sk-0108","unit":"جرام","cost":0,"category":"مصنع"}]};
+
+// ── State ─────────────────────────────────────────────────────────
+let cur=null, cf='all';
+let R   = JSON.parse(localStorage.getItem('3in_rc')  || '{}');
+let CP  = JSON.parse(localStorage.getItem('3in_cp')  || '[]'); // custom products
+let CI  = JSON.parse(localStorage.getItem('3in_ci')  || '[]'); // custom ingredients
+// Per-product APP overrides (checkbox state)
+let AO  = JSON.parse(localStorage.getItem('3in_ao')  || '{}'); // {sku: {on:bool, app_price:num}}
+
+function allProducts(){ return [...BASE.products, ...CP]; }
+function allIngredients(){ return [...BASE.ingredients, ...CI]; }
+
+function getApp(p){
+  if(AO[p.sku] !== undefined) return AO[p.sku];
+  return p.app_price != null ? {on:true, app_price:p.app_price} : {on:false, app_price:null};
+}
+
+// ── Persistence ───────────────────────────────────────────────────
+const GS_URL = 'https://script.google.com/macros/s/AKfycbw4hgtetOV06Ec3xOa0cLaIEEvpNkUj-QQqEbsYShl8HCTf6TkngR-5-zD6wUQmKey8/exec';
+
+function saveAll(){ 
+  localStorage.setItem('3in_rc',JSON.stringify(R)); 
+  localStorage.setItem('3in_cp',JSON.stringify(CP)); 
+  localStorage.setItem('3in_ci',JSON.stringify(CI)); 
+  localStorage.setItem('3in_ao',JSON.stringify(AO)); 
+  badge(); rl(); 
+}
+
+function syncToSheets(showMsg=true){
+  const indicator = document.getElementById('sync-indicator');
+  if(indicator){ indicator.textContent='⏳ جاري الحفظ على Sheets...'; indicator.style.color='var(--dust)'; }
+  
+  const payload = {
+    action: 'saveRecipes',
+    recipes: Object.values(R)
+  };
+  
+  fetch(GS_URL, {
+    method:'POST',
+    body: JSON.stringify(payload),
+    headers:{'Content-Type':'text/plain'}
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.status==='ok'){
+      if(indicator){ indicator.textContent='✓ محفوظ على Google Sheets'; indicator.style.color='var(--ok)'; }
+      if(showMsg) toast('✓ تم الحفظ على Google Sheets');
+      // also sync custom products/ingredients if any
+      if(CP.length) syncCustomData('saveProducts', CP);
+      if(CI.length) syncCustomData('saveIngredients', CI);
+    } else {
+      if(indicator){ indicator.textContent='⚠ خطأ في الحفظ'; indicator.style.color='var(--hot)'; }
+    }
+  })
+  .catch(()=>{
+    if(indicator){ indicator.textContent='⚠ تعذر الاتصال بـ Sheets'; indicator.style.color='var(--hot)'; }
+  });
+}
+
+function syncCustomData(action, data){
+  fetch(GS_URL, {
+    method:'POST',
+    body: JSON.stringify({action, products: data, ingredients: data}),
+    headers:{'Content-Type':'text/plain'}
+  }).catch(()=>{});
+}
+
+function loadFromSheets(){
+  const indicator = document.getElementById('sync-indicator');
+  if(indicator){ indicator.textContent='⏳ جاري التحميل من Sheets...'; indicator.style.color='var(--dust)'; }
+  
+  fetch(GS_URL)
+  .then(r=>r.json())
+  .then(d=>{
+    let loaded=0;
+    if(d.recipes && d.recipes.length){
+      d.recipes.forEach(row=>{
+        if(!row.SKU) return;
+        R[row.SKU]={
+          sku:row.SKU, productName:row['Product Name'],
+          sellPrice:parseFloat(row['Sell Price'])||0,
+          appPrice:parseFloat(row['APP Price'])||null,
+          foodCostPct:parseFloat(row['Food Cost %'])||0,
+          margin:parseFloat(row['Margin Dine'])||0,
+          margin_app:parseFloat(row['Margin APP'])||null,
+          yield:parseInt(row['Yield'])||1,
+          savedAt:row['Saved At'],
+          totalCost:0,
+          ingredients: (() => { try{ return JSON.parse(row['Ingredients JSON']||'[]'); }catch{return[];} })()
+        };
+        loaded++;
+      });
+    }
+    if(d.products && d.products.length){
+      d.products.forEach(row=>{
+        if(!row.SKU||CP.find(p=>p.sku===row.SKU)) return;
+        CP.push({sku:row.SKU,name:row.Name,price:parseFloat(row.Price)||0,app_price:parseFloat(row['APP Price'])||null,category:row.Category||'DINE IN & TO GO',_custom:true});
+      });
+    }
+    if(d.ingredients && d.ingredients.length){
+      d.ingredients.forEach(row=>{
+        if(!row.SKU||CI.find(i=>i.sku===row.SKU)) return;
+        CI.push({sku:row.SKU,name:row.Name,category:row.Category,unit:row.Unit,cost:parseFloat(row.Cost)||0,_custom:true});
+      });
+    }
+    saveAll();
+    if(indicator){ indicator.textContent=`✓ تم التحميل — ${loaded} وصفة`; indicator.style.color='var(--ok)'; }
+    toast(`✓ تم تحميل ${loaded} وصفة من Google Sheets`);
+    if(cur) renderMain(); else renderMain();
+  })
+  .catch(()=>{
+    if(indicator){ indicator.textContent='⚠ تعذر الاتصال'; indicator.style.color='var(--hot)'; }
+    toast('⚠ تعذر الاتصال بـ Google Sheets');
+  });
+}
+
+// ── UI helpers ────────────────────────────────────────────────────
+const tel=document.getElementById('tst');
+function toast(m,d=2200){tel.textContent=m;tel.classList.add('show');setTimeout(()=>tel.classList.remove('show'),d)}
+function badge(){document.getElementById('cbadge').textContent=Object.keys(R).length+' وصفة محفوظة'}
+
+function showPage(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('show'));
+  document.querySelectorAll('.tbtn[id^=tab]').forEach(x=>x.classList.remove('active-tab'));
+  document.getElementById('pg-'+p).classList.add('show');
+  document.getElementById('tab-'+p).classList.add('active-tab');
+  if(p==='products') renderCustomProducts();
+  if(p==='ingredients') renderCustomIngredients();
+}
+
+function toggleAppField(prefix){
+  const chk=document.getElementById(prefix+'-app-check');
+  const wrap=document.getElementById(prefix+'-app-price-wrap');
+  if(chk.checked){ wrap.classList.add('show'); } else { wrap.classList.remove('show'); }
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────
+function sf(c,el){ cf=c; document.querySelectorAll('.ft').forEach(b=>b.classList.remove('on')); el.classList.add('on'); rl(); }
+
+function rl(){
+  const q=document.getElementById('sq').value.toLowerCase();
+  let items=allProducts();
+  if(cf==='saved') items=items.filter(p=>R[p.sku]);
+  if(q) items=items.filter(p=>p.name.toLowerCase().includes(q)||p.sku.includes(q));
+  const ap=p=>getApp(p);
+  document.getElementById('plist').innerHTML=items.map(p=>{
+    const appState=ap(p);
+    return`<div class="pi ${cur?.sku===p.sku?'sel':''} ${R[p.sku]?'saved':''}" onclick="pick('${p.sku}')">
+      <div class="pn">${p.name}${p._custom?'&nbsp;<span class="custom-badge">جديد</span>':''}</div>
+      <div class="pmeta">
+        <span class="psku">${p.sku}</span>
+        <span class="pprice">${p.price.toFixed(0)} ﷼</span>
+        ${appState.on?`<span class="apptag">APP ${appState.app_price?appState.app_price.toFixed(0):''} ﷼</span>`:''}
+        ${R[p.sku]?'<span class="savedtag">✓</span>':''}
+      </div>
+    </div>`;
+  }).join('')||'<div style="padding:1.5rem;color:var(--smoke);font-size:13px;text-align:center">لا نتائج</div>';
+}
+
+function pick(sku){ cur=allProducts().find(p=>p.sku===sku); rl(); renderMain(); }
+
+// ── Main costing area ─────────────────────────────────────────────
+function getRows(){
+  return Array.from(document.querySelectorAll('#tbody tr')).map(tr=>({
+    ingName:tr.querySelector('.iinp')?.value||'',
+    ingSku:tr.dataset.sku||'',
+    qty:parseFloat(tr.querySelector('.qinp')?.value)||0,
+    unit:tr.querySelector('.usel')?.value||'',
+    unitCost:parseFloat(tr.querySelector('.upinp')?.value)||0
+  }));
+}
+
+function calc(){
+  const yi=Math.max(1,parseInt(document.getElementById('yi')?.value)||1);
+  const sp=parseFloat(document.getElementById('si')?.value)||0;
+  const ap=parseFloat(document.getElementById('ai')?.value)||0;
+  const tot=getRows().reduce((s,r)=>s+r.qty*r.unitCost,0);
+  const ps=tot/yi;
+  return{ps,fc:sp>0?ps/sp*100:0,margin:sp-ps,margin_app:ap>0?ap-ps:null,sug:ps>0?ps/0.32:0,sp,ap};
+}
+
+function upd(){
+  const{ps,fc,margin,margin_app,sug,sp,ap}=calc();
+  const e=id=>document.getElementById(id);
+  if(!e('mc'))return;
+  e('mc').textContent=ps.toFixed(2);
+  e('mfc').textContent=sp>0?fc.toFixed(1)+'%':'—';
+  e('mm').textContent=sp>0?margin.toFixed(2):'—';
+  if(sp>0)e('mm').style.color=margin>=0?'var(--ok)':'var(--hot)';
+  const msEl=e('ms'); if(msEl) msEl.textContent=sug>0?sug.toFixed(1)+' ﷼':'—';
+  const amEl=e('am');
+  if(amEl){ amEl.textContent=margin_app!=null?margin_app.toFixed(2):'—'; if(margin_app!=null)amEl.style.color=margin_app>=0?'var(--app)':'var(--hot)'; }
+  const bar=e('fcbar'); if(!bar)return;
+  bar.style.width=(sp>0?Math.min(fc,60)/60*100:0)+'%';
+  let col,bg,lbl;
+  if(fc<=25){col='var(--ok)';bg='var(--ok-bg)';lbl='ممتاز';}
+  else if(fc<=33){col='#3a8c3a';bg='#e8f5e8';lbl='جيد';}
+  else if(fc<=40){col='var(--warn)';bg='var(--warn-bg)';lbl='مقبول';}
+  else{col='var(--hot)';bg='var(--hot-bg)';lbl='مرتفع';}
+  bar.style.background=col;
+  const pill=e('fcpill'); pill.style.background=bg; pill.style.color=col; pill.textContent=sp>0?lbl:'—';
+  document.querySelectorAll('.ccell').forEach((td,i)=>{const r=getRows()[i];if(r)td.textContent=(r.qty*r.unitCost).toFixed(3);});
+}
+
+function onAppCheck(){
+  const chk=document.getElementById('app-on-check');
+  const priceRow=document.getElementById('app-price-row');
+  if(!chk||!priceRow)return;
+  if(chk.checked){ priceRow.style.display='flex'; }
+  else { priceRow.style.display='none'; document.getElementById('ai').value=''; upd(); }
+  // Save override
+  if(cur){
+    const ap=parseFloat(document.getElementById('ai')?.value)||null;
+    AO[cur.sku]={on:chk.checked, app_price:ap};
+    saveAll();
+  }
+}
+
+function onAppPriceChange(){
+  if(cur){
+    const chk=document.getElementById('app-on-check');
+    const ap=parseFloat(document.getElementById('ai')?.value)||null;
+    if(chk&&chk.checked){ AO[cur.sku]={on:true,app_price:ap}; saveAll(); }
+  }
+  upd();
+}
+
+function addRow(d={}){
+  const tb=document.getElementById('tbody');
+  const tr=document.createElement('tr');
+  tr.dataset.sku=d.sku||d.ingSku||'';
+  const units=['جرام','كيلو','ميليلتر','لتر','حبة','قطعة','زجاجة','مليلتر','g','ml','pcs'];
+  tr.innerHTML=`
+    <td style="width:36%"><div class="acw">
+      <input class="iinp" type="text" value="${d.name||d.ingName||''}" placeholder="اسم المادة..." oninput="acIn(this)" onfocus="acIn(this)" onblur="acHide(this)">
+      <div class="acl"></div>
+    </div></td>
+    <td style="width:11%"><input class="qinp" type="number" value="${d.qty||''}" placeholder="0" min="0" step="0.1" oninput="upd()"></td>
+    <td style="width:13%"><select class="usel" onchange="upd()">${units.map(u=>`<option${u===(d.unit||'جرام')?' selected':''}>${u}</option>`).join('')}</select></td>
+    <td style="width:14%"><input class="upinp" type="number" value="${d.unitCost||d.cost||''}" placeholder="0.000" min="0" step="0.001" oninput="upd()"></td>
+    <td class="ccell" style="width:14%">${d.qty&&(d.unitCost||d.cost)?(d.qty*(d.unitCost||d.cost)).toFixed(3):'0.000'}</td>
+    <td style="width:5%;text-align:center"><button class="drow" onclick="this.closest('tr').remove();upd()">✕</button></td>
+  `;
+  tb.appendChild(tr); upd();
+}
+
+function acIn(i){
+  const v=i.value.trim().toLowerCase(), l=i.nextElementSibling;
+  if(!v){l.classList.remove('open');return;}
+  const m=allIngredients().filter(x=>x.name.toLowerCase().includes(v)||x.sku.includes(v)).slice(0,12);
+  if(!m.length){l.classList.remove('open');return;}
+  l.innerHTML=m.map(x=>`<div class="acr" onmousedown="acPick(event,'${x.sku}')"><span>${x.name}</span><span class="act">${x.category}·${x.unit}</span></div>`).join('');
+  l.classList.add('open');
+}
+function acHide(i){setTimeout(()=>i.nextElementSibling.classList.remove('open'),200)}
+function acPick(e,sku){
+  e.preventDefault();
+  const x=allIngredients().find(i=>i.sku===sku); if(!x)return;
+  const tr=e.target.closest('.acl').previousElementSibling.closest('tr');
+  tr.dataset.sku=x.sku; tr.querySelector('.iinp').value=x.name;
+  tr.querySelector('.usel').value=x.unit; tr.querySelector('.upinp').value=x.cost;
+  tr.querySelector('.acl').classList.remove('open'); tr.querySelector('.qinp').focus(); upd();
+}
+
+function renderMain(){
+  if(!cur)return;
+  const p=cur, sv=R[p.sku], ings=sv?sv.ingredients:[];
+  const appState=getApp(p);
+  const hasApp=appState.on;
+  const appPrice=appState.app_price||'';
+
+  document.getElementById('main').innerHTML=`
+    <div class="ph">
+      <div class="ph-l">
+        <h2>${p.name}${p._custom?'&nbsp;<span class="custom-badge" style="font-size:11px">منتج جديد</span>':''}</h2>
+        <div class="phmeta"><span class="phsku">${p.sku}</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+        <!-- APP checkbox -->
+        <label class="app-check-row ${hasApp?'checked':''}" style="cursor:pointer">
+          <input type="checkbox" id="app-on-check" ${hasApp?'checked':''} onchange="onAppCheck()">
+          <span class="app-check-lbl">${hasApp?'✓ متوفر على APP':'متوفر على APP؟'}</span>
+        </label>
+        <!-- Prices row -->
+        <div class="price-row">
+          <div class="yield-g"><label>الحصص</label><input class="yield-inp" id="yi" type="number" value="${sv?.yield||1}" min="1" oninput="upd()"></div>
+          <div class="price-box">
+            <div class="pb-lbl">Dine In</div>
+            <div style="display:flex;align-items:baseline;gap:4px">
+              <input class="pb-inp" id="si" type="number" value="${sv?.sellPrice||p.price}" min="0" step="0.5" oninput="upd()">
+              <span class="pb-unit">﷼</span>
+            </div>
+          </div>
+          <div id="app-price-row" style="display:${hasApp?'flex':'none'};flex-direction:column;gap:4px">
+            <div class="price-box app-box">
+              <div class="pb-lbl app-lbl">APP</div>
+              <div style="display:flex;align-items:baseline;gap:4px">
+                <input class="pb-inp" id="ai" type="number" value="${sv?.appPrice||appPrice}" min="0" step="0.5" oninput="onAppPriceChange()">
+                <span class="pb-unit" style="color:var(--app)">﷼</span>
+              </div>
+              <div class="pb-diff" id="apdiff"></div>
+            </div>
+          </div>
+          <input type="hidden" id="ai-hidden" value="">
+        </div>
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="mc"><div class="mc-lbl">تكلفة المكونات</div><div class="mc-val" id="mc">0.00</div><div class="mc-sub">ريال / حصة</div></div>
+      <div class="mc"><div class="mc-lbl">Food Cost %</div><div class="mc-val" id="mfc">—</div></div>
+      <div class="mc"><div class="mc-lbl">هامش Dine In</div><div class="mc-val" id="mm">—</div><div class="mc-sub">ريال</div></div>
+      ${hasApp?
+        `<div class="mc" style="border-color:rgba(107,63,160,.2);background:var(--app-bg)"><div class="mc-lbl" style="color:var(--app)">هامش APP</div><div class="mc-val" id="am" style="color:var(--app)">—</div></div>`:
+        `<div class="mc"><div class="mc-lbl">سعر مقترح FC 32%</div><div class="mc-val" id="ms" style="color:var(--info)">—</div></div>`
+      }
+    </div>
+    <div class="fcw">
+      <div class="fc-hd"><span class="fc-ttl">Food Cost Bar</span><span class="fc-pill" id="fcpill" style="background:var(--ok-bg);color:var(--ok)">—</span></div>
+      <div class="fc-bg"><div class="fc-bar" id="fcbar" style="width:0%"></div></div>
+      <div class="fc-zones"><span>0%</span><span>25%</span><span>33%</span><span>40%</span><span>60%</span></div>
+    </div>
+    <div class="sec-ttl"><span>المكونات</span><span style="font-weight:400;color:var(--smoke)">${allIngredients().length} مادة</span></div>
+    <div class="ing-wrap">
+      <table><thead><tr>
+        <th>المادة الخام</th><th style="text-align:center">الكمية</th><th style="text-align:center">الوحدة</th>
+        <th style="text-align:center">سعر الوحدة ﷼</th><th style="text-align:center">التكلفة ﷼</th><th></th>
+      </tr></thead><tbody id="tbody"></tbody></table>
+      <button class="add-btn" onclick="addRow()">+ إضافة مكوّن</button>
+    </div>
+    ${Object.keys(R).length?renderSavedHTML():''}
+  `;
+  if(ings.length) ings.forEach(i=>addRow(i)); else addRow();
+  upd();
+}
+
+function renderSavedHTML(){
+  const saved=Object.values(R); if(!saved.length)return'';
+  return`<div class="saved-sec">
+    <div class="saved-ttl">الوصفات المحفوظة (${saved.length})</div>
+    <div class="saved-grid">
+      ${saved.map(r=>`
+        <div class="scard" onclick="pick('${r.sku}')">
+          <button class="scdel" onclick="event.stopPropagation();delR('${r.sku}')">✕</button>
+          <div class="sc-name">${r.productName}</div>
+          <div class="sc-stats">
+            <span class="sc-s">FC: ${r.foodCostPct}%</span>
+            <span class="sc-s">Dine: ${r.margin} ﷼</span>
+            ${r.margin_app!=null?`<span class="sc-s" style="color:var(--app)">APP: ${r.margin_app} ﷼</span>`:''}
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function delR(sku){
+  if(!confirm('حذف وصفة "'+R[sku]?.productName+'"؟'))return;
+  delete R[sku]; saveAll(); toast('🗑 تم الحذف'); renderMain();
+}
+
+// ── Save recipe ───────────────────────────────────────────────────
+function saveRecipe(){
+  if(!cur){toast('⚠ اختر منتجاً أولاً');return;}
+  const r=getRows().filter(x=>x.ingName);
+  const yi=parseInt(document.getElementById('yi')?.value)||1;
+  const sp=parseFloat(document.getElementById('si')?.value)||0;
+  const apChk=document.getElementById('app-on-check');
+  const ap=apChk&&apChk.checked?(parseFloat(document.getElementById('ai')?.value)||0):0;
+  const{ps,fc,margin,margin_app}=calc();
+  R[cur.sku]={
+    productName:cur.name, sku:cur.sku, sellPrice:sp, appPrice:ap||null, yield:yi,
+    ingredients:r, totalCost:+ps.toFixed(4), foodCostPct:+fc.toFixed(1),
+    margin:+margin.toFixed(2), margin_app:margin_app!=null?+margin_app.toFixed(2):null,
+    savedAt:new Date().toLocaleString('ar-SA')
+  };
+  saveAll();
+  syncToSheets(false);
+  const btn=document.getElementById('sbtn');
+  btn.textContent='✓ تم الحفظ'; setTimeout(()=>btn.textContent='حفظ الوصفة',2000);
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+// ── Add product ───────────────────────────────────────────────────
+function addProduct(){
+  const name=document.getElementById('np-name').value.trim();
+  const sku=document.getElementById('np-sku').value.trim();
+  const price=parseFloat(document.getElementById('np-price').value)||0;
+  const onApp=document.getElementById('np-app-check').checked;
+  const appP=onApp?(parseFloat(document.getElementById('np-app-price').value)||null):null;
+  if(!name){toast('⚠ أدخل اسم المنتج');return;}
+  if(!sku){toast('⚠ أدخل SKU');return;}
+  if(allProducts().find(p=>p.sku===sku)){toast('⚠ الـ SKU موجود مسبقاً');return;}
+  const p={name,sku,category:'DINE IN & TO GO',price,_custom:true};
+  if(onApp&&appP){p.app_price=appP; AO[sku]={on:true,app_price:appP};}
+  CP.push(p); saveAll(); syncCustomData('saveProducts',CP); renderCustomProducts();
+  document.getElementById('np-name').value=''; document.getElementById('np-sku').value='';
+  document.getElementById('np-price').value=''; document.getElementById('np-app-price').value='';
+  document.getElementById('np-app-check').checked=false; toggleAppField('np');
+  toast('✓ تمت إضافة المنتج: '+name);
+}
+
+function delCustomProduct(sku){
+  if(!confirm('حذف المنتج؟'))return;
+  CP=CP.filter(p=>p.sku!==sku); delete AO[sku]; delete R[sku];
+  saveAll(); renderCustomProducts(); toast('🗑 تم الحذف');
+}
+
+function renderCustomProducts(){
+  const el=document.getElementById('custom-products-table');
+  document.getElementById('custom-p-count').textContent=CP.length+' منتج';
+  if(!CP.length){el.innerHTML='<div class="empty-table">لا توجد منتجات مضافة بعد</div>';return;}
+  el.innerHTML=`<table><thead><tr>
+    <th>الاسم</th><th>SKU</th><th style="text-align:center">Dine In</th>
+    <th style="text-align:center">APP</th><th></th>
+  </tr></thead><tbody>
+  ${CP.map(p=>{ const ao=getApp(p); return`<tr>
+    <td style="font-size:13px">${p.name}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--smoke)">${p.sku}</td>
+    <td style="text-align:center;font-size:13px">${p.price.toFixed(1)} ﷼</td>
+    <td style="text-align:center">${ao.on?`<span class="app-badge-cell">APP ${ao.app_price?.toFixed(1)||''} ﷼</span>`:`<span class="no-badge">—</span>`}</td>
+    <td style="text-align:center"><button class="del-row-btn" onclick="delCustomProduct('${p.sku}')">🗑</button></td>
+  </tr>`; }).join('')}
+  </tbody></table>`;
+}
+
+// ── Add ingredient ────────────────────────────────────────────────
+function addIngredient(){
+  const name=document.getElementById('ni-name').value.trim();
+  const sku=document.getElementById('ni-sku').value.trim();
+  const cat=document.getElementById('ni-cat').value;
+  const unit=document.getElementById('ni-unit').value;
+  const cost=parseFloat(document.getElementById('ni-cost').value)||0;
+  if(!name){toast('⚠ أدخل اسم المادة');return;}
+  if(!sku){toast('⚠ أدخل SKU');return;}
+  if(allIngredients().find(i=>i.sku===sku)){toast('⚠ الـ SKU موجود مسبقاً');return;}
+  CI.push({name,sku,category:cat,unit,cost,_custom:true});
+  saveAll(); syncCustomData('saveIngredients',CI); renderCustomIngredients();
+  document.getElementById('ni-name').value=''; document.getElementById('ni-sku').value=''; document.getElementById('ni-cost').value='';
+  toast('✓ تمت إضافة المادة: '+name);
+}
+
+function delCustomIngredient(sku){
+  if(!confirm('حذف المادة؟'))return;
+  CI=CI.filter(i=>i.sku!==sku); saveAll(); renderCustomIngredients(); toast('🗑 تم الحذف');
+}
+
+function renderCustomIngredients(){
+  const el=document.getElementById('custom-ings-table');
+  document.getElementById('custom-i-count').textContent=CI.length+' مادة';
+  if(!CI.length){el.innerHTML='<div class="empty-table">لا توجد مواد مضافة بعد</div>';return;}
+  el.innerHTML=`<table><thead><tr>
+    <th>الاسم</th><th>SKU</th><th>التصنيف</th><th>الوحدة</th>
+    <th style="text-align:center">سعر الوحدة ﷼</th><th></th>
+  </tr></thead><tbody>
+  ${CI.map(i=>`<tr>
+    <td style="font-size:13px">${i.name}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--smoke)">${i.sku}</td>
+    <td style="font-size:12px;color:var(--dust)">${i.category}</td>
+    <td style="font-size:12px;color:var(--dust)">${i.unit}</td>
+    <td style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px">${i.cost}</td>
+    <td style="text-align:center"><button class="del-row-btn" onclick="delCustomIngredient('${i.sku}')">🗑</button></td>
+  </tr>`).join('')}
+  </tbody></table>`;
+}
+
+// ── Export ────────────────────────────────────────────────────────
+function openExport(){ if(!Object.keys(R).length){toast('لا توجد وصفات محفوظة');return;} document.getElementById('modal').classList.remove('hidden'); }
+function closeModal(){ document.getElementById('modal').classList.add('hidden'); }
+
+function buildWB(){
+  const saved=Object.values(R); if(!saved.length)return null;
+  const wb=XLSX.utils.book_new();
+  const s1=[['Three In — Recipe Costing','','','','','','','',''],['تاريخ:',new Date().toLocaleString('ar-SA'),'','','','','','',''],
+    [],['المنتج','SKU','سعر Dine In','سعر APP','تكلفة/حصة','FC% Dine','هامش Dine','هامش APP','الحصص']];
+  saved.forEach(r=>s1.push([r.productName,r.sku,r.sellPrice,r.appPrice||'—',r.totalCost,r.foodCostPct+'%',r.margin,r.margin_app??'—',r.yield]));
+  const ws1=XLSX.utils.aoa_to_sheet(s1); ws1['!cols']=[30,12,12,12,14,12,12,12,8].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws1,'ملخص الوصفات');
+  const s2=[['Three In — تفصيل المكونات','','','','','','',''],
+    [],['المنتج','Product SKU','المكوّن','Ingredient SKU','الكمية','الوحدة','سعر الوحدة ﷼','التكلفة ﷼']];
+  saved.forEach(r=>{ r.ingredients.filter(i=>i.ingName).forEach(i=>s2.push([r.productName,r.sku,i.ingName,i.ingSku,i.qty,i.unit,i.unitCost,+(i.qty*i.unitCost).toFixed(4)])); s2.push(['','','— إجمالي/حصة —','','','','',r.totalCost]); s2.push([]); });
+  const ws2=XLSX.utils.aoa_to_sheet(s2); ws2['!cols']=[28,12,28,12,8,10,12,14].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws2,'تفصيل المكونات');
+  saved.forEach(r=>{
+    const d=[['المنتج:',r.productName,'','SKU:',r.sku],['سعر Dine:',r.sellPrice+'﷼','','سعر APP:',r.appPrice?r.appPrice+'﷼':'—'],
+      ['FC%:',r.foodCostPct+'%','','هامش:',r.margin+'﷼'],['الحصص:',r.yield,'','',''],
+      [],['المكوّن','SKU','الكمية','الوحدة','سعر الوحدة','التكلفة']];
+    r.ingredients.filter(i=>i.ingName).forEach(i=>d.push([i.ingName,i.ingSku,i.qty,i.unit,i.unitCost,+(i.qty*i.unitCost).toFixed(4)]));
+    d.push([],[' إجمالي','','','','',+(r.totalCost*r.yield).toFixed(4)]);
+    d.push(['تكلفة الحصة','','','','',r.totalCost]);
+    const ws=XLSX.utils.aoa_to_sheet(d); ws['!cols']=[28,12,9,10,13,14].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,ws,r.sku.replace('sk-','').substring(0,10));
+  });
+  return wb;
+}
+
+function dlExcel(){
+  const wb=buildWB(); if(!wb){toast('لا توجد وصفات');return;}
+  XLSX.writeFile(wb,`ThreeIn_${new Date().toLocaleDateString('en').replace(/\//g,'-')}.xlsx`);
+  toast('⬇ جاري التحميل...'); setTimeout(closeModal,600);
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+rl(); badge();
+// Auto-load from Google Sheets on startup
+setTimeout(()=>loadFromSheets(), 800);
+</script>
+</body>
+</html>
