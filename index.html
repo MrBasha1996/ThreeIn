@@ -125,13 +125,13 @@ body{font-family:"Noto Sans Arabic",sans-serif;background:var(--paper);color:var
 .fc-zones{display:flex;justify-content:space-between;font-size:9px;color:var(--smoke);font-family:"IBM Plex Mono",monospace}
 /* Ingredients table */
 .sec-lbl{font-size:10px;font-weight:600;color:var(--dust);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between}
-.iw{background:var(--white);border:1px solid var(--fog);border-radius:var(--rl);overflow:hidden;margin-bottom:1rem}
-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.iw{background:var(--white);border:1px solid var(--fog);border-radius:var(--rl);overflow:visible;margin-bottom:1rem}
+table{width:100%;border-collapse:collapse;table-layout:fixed;overflow:visible}
 thead th{background:var(--paper);padding:8px 10px;text-align:right;font-size:10px;font-weight:600;color:var(--dust);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--fog);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 tbody tr{border-bottom:1px solid var(--fog);transition:background .1s}
 tbody tr:last-child{border-bottom:none}
 tbody tr:hover{background:var(--mist)}
-td{padding:7px 10px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+td{padding:7px 10px;font-size:13px;overflow:visible;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
 .td-n{font-weight:500}
 .td-m{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--smoke)}
 .td-p{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500}
@@ -153,7 +153,7 @@ td{padding:7px 10px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-
 .add-btn:hover{color:var(--ink);background:var(--mist)}
 /* Autocomplete */
 .acw{position:relative}
-.acl{position:absolute;top:calc(100% + 3px);right:0;left:0;z-index:400;background:var(--white);border:1px solid var(--fog);border-radius:var(--r);max-height:180px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.1);display:none}
+.acl{position:fixed;z-index:9999;background:var(--white);border:1px solid var(--fog);border-radius:var(--r);max-height:180px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.15);display:none;min-width:220px}
 .acl.open{display:block}
 .acr{padding:7px 10px;cursor:pointer;font-size:12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--fog);transition:background .1s}
 .acr:last-child{border-bottom:none}
@@ -310,7 +310,12 @@ td{padding:7px 10px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-
     <div class="fg">
       <div class="field"><label>الاسم</label><input type="text" id="pf-name" placeholder="اسم المنتج"></div>
       <div class="field"><label>SKU</label><input type="text" id="pf-sku" placeholder="sk-0300"></div>
-      <div class="field"><label>الفئة</label><input type="text" id="pf-cat" placeholder="Meal أو Batch"></div>
+      <div class="field"><label>الفئة</label>
+        <select id="pf-cat" onchange="onCatChange()">
+          <option value="Meal">Meal — منتج للبيع</option>
+          <option value="Batch">Batch — منتج وسيط (لا يباع)</option>
+        </select>
+      </div>
       <div class="field"><label>سعر Dine In ﷼</label><input type="number" id="pf-price" placeholder="0.00" min="0" step="0.5"></div>
     </div>
     <label class="app-toggle-row" id="pf-app-tog">
@@ -430,11 +435,29 @@ function gI()  { return JSON.parse(localStorage.getItem(lk('i')) || '[]'); }
 function sI(v) { localStorage.setItem(lk('i'), JSON.stringify(v)); }
 function gAO() { return JSON.parse(localStorage.getItem(lk('ao')) || '{}'); }
 function sAO(v){ localStorage.setItem(lk('ao'), JSON.stringify(v)); }
+// Deleted SKUs blacklist - persists across sessions
+function gDel()  { return JSON.parse(localStorage.getItem(lk('del')) || '[]'); }
+function sDel(v) { localStorage.setItem(lk('del'), JSON.stringify(v)); }
+function addDel(sku) { var d = gDel(); if (!d.includes(sku)) { d.push(sku); localStorage.setItem(lk('del'), JSON.stringify(d)); } }
+function isDel(sku) { return gDel().includes(sku); }
 
-function aP()  { return [...(BRANDS[brand].products || []), ...gP()]; }
-function aSP() { return [...(BRANDS[brand].semi_products || [])]; }
-function aI()  { return [...(BRANDS[brand].ingredients || []), ...gI()]; }
+function aP()  { var del=gDel(); return [...(BRANDS[brand].products || []), ...gP().filter(function(p){return p.category!=='Batch' && !p.is_semi;})].filter(function(p){return !del.includes(p.sku);}); }
+function aSP() {
+  var base = BRANDS[brand].semi_products || [];
+  var custom = gP().filter(function(p) { return p.category === 'Batch' || p.is_semi; });
+  var del = gDel();
+  return [...base, ...custom].filter(function(s) { return !del.includes(s.sku); });
+}
+function aI()  { var del=gDel(); return [...(BRANDS[brand].ingredients || []), ...gI()].filter(function(i){return !del.includes(i.sku);}); }
 function allItems() { return [...aP(), ...aSP()]; }
+// All components for recipe ingredient search = ingredients + semi products
+function allComponents() {
+  var ings = aI();
+  var semis = aSP().map(function(s) {
+    return {name:s.name, sku:s.sku, unit:'حصة', cost:0, category:'⚙ وسيط', is_semi:true};
+  });
+  return [...ings, ...semis];
+}
 
 function getApp(p) {
   const ao = gAO();
@@ -490,6 +513,18 @@ function setCF(c, el) {
   renderCsb();
 }
 
+function onCatChange() {
+  var cat = document.getElementById('pf-cat') ? document.getElementById('pf-cat').value : 'Meal';
+  var appRow = document.getElementById('pf-app-tog');
+  var priceField = document.querySelector('#pfcard .field input[id="pf-price"]');
+  if (cat === 'Batch') {
+    if (appRow) appRow.style.display = 'none';
+    if (priceField) { priceField.value = '0'; priceField.disabled = true; priceField.placeholder = 'لا ينطبق (Batch)'; }
+  } else {
+    if (appRow) appRow.style.display = 'flex';
+    if (priceField) { priceField.disabled = false; priceField.placeholder = '0.00'; }
+  }
+}
 function toggleAPP(px) {
   var chk = document.getElementById(px + '-app-chk');
   var wrap = document.getElementById(px + '-app-prow');
@@ -676,7 +711,7 @@ function acIn(inp) {
   var v = inp.value.trim().toLowerCase();
   var l = inp.nextElementSibling;
   if (!v) { l.classList.remove('open'); return; }
-  var m = aI().filter(function(x) { return x.name.toLowerCase().includes(v) || x.sku.includes(v); }).slice(0, 12);
+  var m = allComponents().filter(function(x) { return x.name.toLowerCase().includes(v) || x.sku.includes(v); }).slice(0, 12);
   if (!m.length) { l.classList.remove('open'); return; }
   l.innerHTML = m.map(function(x) {
     return '<div class="acr" onmousedown="acPick(event,\'' + x.sku + '\')">' +
@@ -688,8 +723,13 @@ function acIn(inp) {
 function acHide(inp) { setTimeout(function() { inp.nextElementSibling.classList.remove('open'); }, 200); }
 function acPick(e, sku) {
   e.preventDefault();
-  var x = aI().find(function(i) { return i.sku === sku; });
+  var x = allComponents().find(function(i) { return i.sku === sku; });
   if (!x) return;
+  // If semi product, get its calculated cost from saved recipe
+  if (x.is_semi) {
+    var R = gR();
+    if (R[sku] && R[sku].totalCost) { x = Object.assign({}, x, {cost: R[sku].totalCost}); }
+  }
   var tr = e.target.closest('.acl').previousElementSibling.closest('tr');
   tr.dataset.sku = x.sku;
   tr.querySelector('.iinp').value = x.name;
@@ -807,7 +847,7 @@ function delR(sku) {
   var R = gR(); delete R[sku]; sR(R); badge();
   syncAction('deleteRecipe', {sku: sku, brand: brand});
   toast('🗑 تم الحذف');
-  renderCMain();
+  renderCMain(); renderSavedHTML && renderCMain();
 }
 
 /* ── SAVE RECIPE ──────────────────────────────────────────────── */
@@ -936,11 +976,13 @@ function submitP() {
     toast('✓ تم التعديل');
   } else {
     if (allItems().find(function(p) { return p.sku === sku; })) { toast('⚠ SKU موجود مسبقاً'); return; }
+    var isBatch = cat === 'Batch';
     var np = {name:name, sku:sku, category:cat, price:price, app_price:appP, _custom:true};
+    if (isBatch) { np.is_semi = true; np.price = 0; }
     CP.push(np); sP(CP);
-    if (onApp && appP) { AO[sku] = {on:true,app_price:appP}; sAO(AO); }
+    if (!isBatch && onApp && appP) { AO[sku] = {on:true,app_price:appP}; sAO(AO); }
     syncAction('saveProduct', {brand:brand, product:np});
-    toast('✓ تمت الإضافة: ' + name);
+    toast('✓ تمت الإضافة: ' + name + (isBatch ? ' (وسيط)' : ''));
   }
   cancelPF(); renderPT(); renderCsb();
 }
@@ -948,6 +990,7 @@ function submitP() {
 function deleteP(sku) {
   if (!confirm('حذف المنتج؟')) return;
   sP(gP().filter(function(p) { return p.sku !== sku; }));
+  addDel(sku);  // persist deletion across sessions
   var R = gR(); delete R[sku]; sR(R);
   syncAction('deleteProduct', {brand:brand, sku:sku});
   badge(); renderPT(); renderCsb(); toast('🗑 تم الحذف');
@@ -1026,6 +1069,7 @@ function submitI() {
 function deleteI(sku) {
   if (!confirm('حذف المادة؟')) return;
   sI(gI().filter(function(i) { return i.sku !== sku; }));
+  addDel(sku);  // persist deletion across sessions
   syncAction('deleteIngredient', {brand:brand, sku:sku});
   renderIT(); toast('🗑 تم الحذف');
 }
@@ -1056,14 +1100,15 @@ function loadFromSheets() {
         });
         localStorage.setItem('3in_'+b+'_r', JSON.stringify(R));
         var CP = JSON.parse(localStorage.getItem('3in_'+b+'_p')||'[]');
+        var del_b = JSON.parse(localStorage.getItem('3in_'+b+'_del')||'[]');
         if (d.products) d.products.filter(function(r) { return (r.brand||'ti') === b; }).forEach(function(row) {
-          if (!row.SKU || CP.find(function(p) { return p.sku === row.SKU; })) return;
+          if (!row.SKU || CP.find(function(p) { return p.sku === row.SKU; }) || del_b.includes(row.SKU)) return;
           CP.push({sku:row.SKU,name:row.Name,price:parseFloat(row.Price)||0,app_price:parseFloat(row['APP Price'])||null,category:row.Category||'',_custom:true});
         });
         localStorage.setItem('3in_'+b+'_p', JSON.stringify(CP));
         var CI = JSON.parse(localStorage.getItem('3in_'+b+'_i')||'[]');
         if (d.ingredients) d.ingredients.filter(function(r) { return (r.brand||'ti') === b; }).forEach(function(row) {
-          if (!row.SKU || CI.find(function(i) { return i.sku === row.SKU; })) return;
+          if (!row.SKU || CI.find(function(i) { return i.sku === row.SKU; }) || del_b.includes(row.SKU)) return;
           CI.push({sku:row.SKU,name:row.Name,category:row.Category,unit:row.Unit,cost:parseFloat(row.Cost)||0,_custom:true});
         });
         localStorage.setItem('3in_'+b+'_i', JSON.stringify(CI));
