@@ -248,9 +248,137 @@ td{padding:7px 10px;font-size:13px;overflow:visible;text-overflow:ellipsis;white
 .ts-skip{font-size:12px;font-family:"IBM Plex Mono",monospace;color:var(--dust)}
 .btn-run-all{padding:6px 14px;background:var(--ink);color:#fff;border:none;border-radius:var(--r);font-size:12px;font-family:inherit;font-weight:500;cursor:pointer;margin-right:auto}
 .btn-clear-log{padding:6px 12px;background:transparent;color:var(--dust);border:1px solid var(--fog);border-radius:var(--r);font-size:11px;font-family:inherit;cursor:pointer}
+/* Role selector */
+.role-sel{display:flex;gap:2px;background:rgba(255,255,255,.08);border-radius:var(--r);padding:2px}
+.rbtn{padding:4px 9px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,.5);transition:all .15s;white-space:nowrap}
+.rbtn.on{background:rgba(255,255,255,.18);color:#fff}
+/* Ops role: hide prices */
+body.role-ops .price-col{display:none!important}
+body.role-ops .fcw{display:none}
+body.role-ops .price-row{display:none}
+body.role-ops .price-mc{display:none}
+body.role-ops #sbtn{display:none}
+body.role-ops #fc-warn-badge{display:none}
+body.role-ops #btn-price-upload{display:none}
+body.role-ops #btn-export{display:none}
+body.role-ops #ntab-dashboard{display:none}
+body.role-ops #ntab-tests{display:none}
+/* Kitchen role: minimal view */
+body.role-kitchen .price-col{display:none!important}
+body.role-kitchen .yield-col{display:none!important}
+body.role-kitchen .fcw{display:none}
+body.role-kitchen .price-row{display:none}
+body.role-kitchen .price-mc{display:none}
+body.role-kitchen .metrics{display:none}
+body.role-kitchen #sbtn{display:none}
+body.role-kitchen #fc-warn-badge{display:none}
+body.role-kitchen #btn-price-upload{display:none}
+body.role-kitchen #btn-export{display:none}
+body.role-kitchen #ntab-dashboard{display:none}
+body.role-kitchen #ntab-products{display:none}
+body.role-kitchen #ntab-ingredients{display:none}
+body.role-kitchen #ntab-tests{display:none}
+body.role-kitchen .csb-ftabs{display:none}
+body.role-kitchen .saved-sec{display:none}
+body.role-kitchen .add-btn{display:none}
+body.role-kitchen .drow{display:none}
+body.role-kitchen .ph-r .btn{display:none}
+/* Login */
+.login-screen{position:fixed;inset:0;background:var(--ink);z-index:1000;display:flex;align-items:center;justify-content:center}
+.login-screen.hidden{display:none}
+.login-box{background:var(--white);border-radius:var(--rl);padding:2rem;width:100%;max-width:340px;box-shadow:0 16px 48px rgba(0,0,0,.4)}
+.login-logo{font-size:18px;font-weight:700;color:var(--ink);margin-bottom:4px}
+.login-sub{font-size:12px;color:var(--dust);margin-bottom:1.5rem}
+.login-err{font-size:12px;color:var(--hot);background:var(--hot-bg);border-radius:var(--r);padding:7px 10px;margin-bottom:10px;display:none}
+.login-err.show{display:block}
+/* User mgmt modal */
+.umgmt-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
+.umgmt-table th{text-align:right;padding:5px 8px;background:var(--paper);border-bottom:1px solid var(--fog);font-size:10px;color:var(--dust);font-weight:600}
+.umgmt-table td{padding:6px 8px;border-bottom:1px solid var(--fog)}
+/* Topbar user info */
+.uinfo{font-size:11px;color:rgba(255,255,255,.6);padding:3px 8px;border-radius:var(--r);background:rgba(255,255,255,.08)}
 </style>
 </head>
 <body>
+
+<!-- Login Screen -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">3IN ✕ BB</div>
+    <div class="login-sub">Recipe Costing System</div>
+    <div class="login-err" id="login-err">اسم المستخدم أو كلمة المرور غير صحيحة</div>
+    <div class="field" style="margin-bottom:10px">
+      <label>اسم المستخدم</label>
+      <input type="text" id="li-user" placeholder="username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label>كلمة المرور</label>
+      <input type="password" id="li-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-p" style="width:100%;padding:10px" onclick="doLogin()">دخول</button>
+  </div>
+</div>
+
+<!-- User Management Modal -->
+<div class="ov hidden" id="umgmt-modal">
+  <div class="modal" style="max-width:540px">
+    <div class="mhd"><span style="font-size:18px">👥</span><h3>إدارة المستخدمين</h3></div>
+    <div id="umgmt-list"></div>
+    <div id="add-user-section" style="border-top:1px solid var(--fog);padding-top:12px;margin-top:4px">
+      <div style="font-size:10px;font-weight:600;color:var(--dust);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">إضافة مستخدم جديد</div>
+      <div class="fg" style="margin-bottom:8px">
+        <div class="field"><label>اسم المستخدم</label><input type="text" id="nu-user" placeholder="username"></div>
+        <div class="field"><label>كلمة المرور</label><input type="text" id="nu-pass" placeholder="password"></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px">
+        <div class="field"><label>الدور</label>
+          <select id="nu-role">
+            <option value="ops">عمليات</option>
+            <option value="kitchen">مطبخ</option>
+            <option value="accountant">محاسب</option>
+          </select>
+        </div>
+        <div class="field"><label>البراند</label>
+          <select id="nu-brand">
+            <option value="ti">Three In</option>
+            <option value="bb">باب البلد</option>
+            <option value="all">الكل</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions"><button class="btn btn-p" onclick="addUser()">إضافة ＋</button></div>
+    </div>
+    <div id="edit-user-section" style="display:none;border-top:2px solid var(--info);padding-top:12px;margin-top:4px;background:var(--paper);border-radius:var(--r);padding:12px">
+      <div style="font-size:10px;font-weight:600;color:var(--info);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">✏ تعديل مستخدم</div>
+      <input type="hidden" id="eu-orig">
+      <div class="fg" style="margin-bottom:8px">
+        <div class="field"><label>اسم المستخدم</label><input type="text" id="eu-user" placeholder="username"></div>
+        <div class="field"><label>كلمة المرور</label><input type="text" id="eu-pass" placeholder="password"></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px">
+        <div class="field"><label>الدور</label>
+          <select id="eu-role">
+            <option value="ops">عمليات</option>
+            <option value="kitchen">مطبخ</option>
+            <option value="accountant">محاسب</option>
+          </select>
+        </div>
+        <div class="field"><label>البراند</label>
+          <select id="eu-brand">
+            <option value="ti">Three In</option>
+            <option value="bb">باب البلد</option>
+            <option value="all">الكل</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="cancelEditUser()">إلغاء</button>
+        <button class="btn btn-p" onclick="saveEditUser()">حفظ التعديلات ✓</button>
+      </div>
+    </div>
+    <div class="mfoot"><button class="mbtn mbtn-p" onclick="document.getElementById('umgmt-modal').classList.add('hidden')">إغلاق</button></div>
+  </div>
+</div>
 
 <div class="bar">
   <div class="logo">
@@ -261,9 +389,17 @@ td{padding:7px 10px;font-size:13px;overflow:visible;text-overflow:ellipsis;white
   <div class="bar-r">
     <div class="sync-dot" id="sync-dot"></div>
     <span class="cbadge" id="cbadge">0 وصفة</span>
-    <button class="tbtn" onclick="loadFromSheets()">↻</button>
-    <button class="tbtn" onclick="openExport()">⬇ Excel</button>
+    <span class="cbadge" id="fc-warn-badge" style="display:none;background:var(--hot-bg);color:var(--hot);border-color:var(--hot)"></span>
+    <span class="uinfo" id="uinfo"></span>
+    <button class="tbtn" id="btn-umgmt" style="display:none" onclick="openUmgmt()" title="إدارة المستخدمين">👥</button>
+    <button class="tbtn" onclick="loadFromSheets()" title="تحميل من Sheets">↻</button>
+    <label id="btn-price-upload" class="tbtn" style="cursor:pointer" title="رفع ملف تحديث الأسعار">
+      📤 رفع أسعار
+      <input type="file" id="price-upload" accept=".xlsx" style="display:none" onchange="handlePriceUpload(this)">
+    </label>
+    <button id="btn-export" class="tbtn" onclick="openExport()">⬇ Excel</button>
     <button class="tbtn tbtn-p" id="sbtn" onclick="saveRecipe()">حفظ</button>
+    <button class="tbtn" onclick="doLogout()" title="تسجيل خروج" style="color:rgba(255,100,100,.8)">⏻</button>
   </div>
 </div>
 
@@ -277,6 +413,7 @@ td{padding:7px 10px;font-size:13px;overflow:visible;text-overflow:ellipsis;white
   <button class="ntab" id="ntab-products" onclick="setNav('products')">المنتجات</button>
   <button class="ntab" id="ntab-ingredients" onclick="setNav('ingredients')">المواد الخام</button>
   <button class="ntab" id="ntab-tests" onclick="setNav('tests')">🧪 اختبارات</button>
+  <button class="ntab" id="ntab-dashboard" onclick="setNav('dashboard')">📊 Dashboard</button>
 </div>
 
 <!-- Costing -->
@@ -398,6 +535,11 @@ td{padding:7px 10px;font-size:13px;overflow:visible;text-overflow:ellipsis;white
   </div>
 </div>
 
+<!-- Dashboard -->
+<div class="pg" id="pg-dashboard" style="max-width:900px;margin:0 auto">
+  <div id="dash-body"></div>
+</div>
+
 <!-- Modal -->
 <div class="ov hidden" id="modal">
   <div class="modal">
@@ -418,17 +560,81 @@ td{padding:7px 10px;font-size:13px;overflow:visible;text-overflow:ellipsis;white
 
 <div class="tst" id="tst"></div>
 
+<div class="ov hidden" id="price-impact-pop">
+  <div class="modal" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column">
+    <div class="mhd"><span style="font-size:18px">⚠</span><h3>تأثير تغيير الأسعار</h3></div>
+    <div id="price-impact-stats" style="font-size:12px;color:var(--dust);margin-bottom:10px"></div>
+    <div id="price-impact-body" style="overflow-y:auto;flex:1;font-size:12px"></div>
+    <div class="mfoot" style="margin-top:12px">
+      <button class="mbtn" onclick="document.getElementById('price-impact-pop').classList.add('hidden');document.getElementById('_pending-file-input') && (document.getElementById('_pending-file-input').value='')">إلغاء</button>
+      <button class="mbtn mbtn-p" onclick="applyPriceChanges()">تأكيد التحديث ✓</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov hidden" id="ph-pop" onclick="this.classList.add('hidden')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:360px">
+    <div class="mhd"><span style="font-size:18px">📋</span><h3 id="ph-pop-title">سجل الأسعار</h3></div>
+    <div id="ph-pop-body" style="font-size:13px;line-height:1.8"></div>
+    <div class="mfoot"><button class="mbtn mbtn-p" onclick="document.getElementById('ph-pop').classList.add('hidden')">إغلاق</button></div>
+  </div>
+</div>
+
 <script>
 /* ── DATA ─────────────────────────────────────────────────────── */
 const GS = 'https://script.google.com/macros/s/AKfycbw4hgtetOV06Ec3xOa0cLaIEEvpNkUj-QQqEbsYShl8HCTf6TkngR-5-zD6wUQmKey8/exec';
 const BRANDS = {ti: {"products":[{"name":"American lettuce","sku":"sk-0288","category":"Meal","price":2.0},{"name":"Extra Tenderloin","sku":"sk-0287","category":"Meal","price":16.0},{"name":"Cheesesteak Tenderloin L Meal + soft drink + fries","sku":"sk-0284","category":"Meal","price":53.0,"app_price":56.0,"app_sku":"sk-0285"},{"name":"Cheesesteak Tenderloin R Meal + soft drink + fries","sku":"sk-0282","category":"Meal","price":43.0,"app_price":46.0,"app_sku":"sk-0283"},{"name":"BMT L","sku":"sk-0279","category":"Meal","price":36.0},{"name":"Ice cream L","sku":"sk-0278","category":"Meal","price":12.0},{"name":"CheesesSteak Tenderloin L","sku":"sk-0276","category":"Meal","price":43.0,"app_price":46.0,"app_sku":"sk-0280"},{"name":"CheesesSteak Tenderloin R","sku":"sk-0275","category":"Meal","price":33.0,"app_price":36.0,"app_sku":"sk-0281"},{"name":"Sweet potato","sku":"sk-0268","category":"Meal","price":15.0},{"name":"Staff meal burger +fries+pepsi","sku":"sk-0267","category":"Meal","price":24.0},{"name":"staff meal omelet +fries +pepsi","sku":"sk-0266","category":"Meal","price":15.0},{"name":"staff meal chicken +fries+pepsi","sku":"sk-0265","category":"Meal","price":17.0},{"name":"MEAL B -D +soft drink + fries","sku":"sk-0253","category":"Meal","price":49.0,"app_price":52.0,"app_sku":"sk-0273"},{"name":"MEAL B-S +soft drink+ fries","sku":"sk-0252","category":"Meal","price":39.0,"app_price":42.0,"app_sku":"sk-0274"},{"name":"Cheese fries with chicken","sku":"sk-0251","category":"Meal","price":34.0,"app_price":21.0,"app_sku":"sk-0247"},{"name":"Mix cheese","sku":"sk-0232","category":"Meal","price":6.0},{"name":"Red chili sauce","sku":"sk-0231","category":"Meal","price":6.0},{"name":"CHEESE FRIES","sku":"sk-0230","category":"Meal","price":21.0,"app_price":44.0,"app_sku":"sk-0248"},{"name":"Honey BBQ sauce","sku":"sk-0222","category":"Meal","price":5.0},{"name":"Extra Meat","sku":"sk-0220","category":"Meal","price":25.0,"app_price":27.0,"app_sku":"sk-0158"},{"name":"Extra cheese","sku":"sk-0214","category":"Meal","price":2.0},{"name":"Caramelized onion","sku":"sk-0213","category":"Meal","price":3.0,"app_price":3.0,"app_sku":"sk-0182"},{"name":"Crispy onion","sku":"sk-0212","category":"Meal","price":3.0,"app_price":3.0,"app_sku":"sk-0183"},{"name":"Extra Cajun","sku":"sk-0211","category":"Meal","price":1.0,"app_price":1.0,"app_sku":"sk-0179"},{"name":"Hony mustard sauce App","sku":"sk-0210","category":"Meal","price":7.0},{"name":"Hony mustard sauce","sku":"sk-0209","category":"Meal","price":6.0},{"name":"honey mustard crispy chicken App","sku":"sk-0208","category":"Meal","price":36.0},{"name":"Truffle sauce","sku":"sk-0207","category":"Meal","price":7.0},{"name":"honey mustard crispy chicken","sku":"sk-0188","category":"Meal","price":32.0},{"name":"Mashed potato plain","sku":"sk-0178","category":"Meal","price":10.0,"app_price":10.0,"app_sku":"sk-0181"},{"name":"ذرة-SWEET CORN","sku":"sk-0155","category":"Meal","price":15.0,"app_price":16.0,"app_sku":"sk-0175"},{"name":"Mashed potato with mushroom","sku":"sk-0154","category":"Meal","price":16.0,"app_price":16.0,"app_sku":"sk-0186"},{"name":"mushroom sauce","sku":"sk-0153","category":"Meal","price":8.0,"app_price":8.0,"app_sku":"sk-0180"},{"name":"Milk shake vanilla (half)","sku":"sk-0145","category":"Meal","price":14.0},{"name":"Cheese fries with steak","sku":"sk-0143","category":"Meal","price":44.0},{"name":"MilkShake peantbutter","sku":"sk-0140","category":"Meal","price":24.0},{"name":"Milkshake strawberry","sku":"sk-0139","category":"Meal","price":24.0},{"name":"MilkShake oreo","sku":"sk-0138","category":"Meal","price":24.0,"app_price":24.0,"app_sku":"sk-0184"},{"name":"MilkShake - APP","sku":"sk-0127","category":"Meal","price":23.0},{"name":"MilkShake vanillia","sku":"sk-0124","category":"Meal","price":21.0},{"name":"Soft Drinks","sku":"sk-0119","category":"Meal","price":6.0},{"name":"Sparkling Water","sku":"sk-0118","category":"Meal","price":9.0,"app_price":9.0,"app_sku":"sk-0121"},{"name":"Water","sku":"sk-0117","category":"Meal","price":4.0,"app_price":4.0,"app_sku":"sk-0104"},{"name":"Smash burger Sauce","sku":"sk-0113","category":"Meal","price":5.0,"app_price":5.0,"app_sku":"sk-0097"},{"name":"Red Sauce","sku":"sk-0112","category":"Meal","price":5.0,"app_price":5.0,"app_sku":"sk-0096"},{"name":"White Sauce","sku":"sk-0111","category":"Meal","price":5.0,"app_price":5.0,"app_sku":"sk-0095"},{"name":"CheeseSteak Black Angus L","sku":"sk-0110","category":"Meal","price":58.0},{"name":"CheeseSteak Black Angus R","sku":"sk-0109","category":"Meal","price":48.0,"app_price":49.0,"app_sku":"sk-0088"},{"name":"Smashed Burger L","sku":"sk-0108","category":"Meal","price":39.0,"app_price":43.0,"app_sku":"sk-0087"},{"name":"Smashed Burger R","sku":"sk-0107","category":"Meal","price":29.0,"app_price":33.0,"app_sku":"sk-0086"},{"name":"Cajun Fries","sku":"sk-0106","category":"Meal","price":15.0,"app_price":16.0,"app_sku":"sk-0091"},{"name":"Regular Fries","sku":"sk-0105","category":"Meal","price":13.0,"app_price":14.0,"app_sku":"sk-0090"},{"name":"Soft Drinks (APPS)","sku":"sk-0099","category":"Meal","price":6.0}],"semi_products":[{"name":"جبنة شيدر سائلة - مصتع","sku":"sk-0236","category":"Batch","price":0.0,"is_semi":true},{"name":"فلفل مجروش + سيراشا بودر","sku":"sk-0232","category":"Batch","price":0.0,"is_semi":true},{"name":"صوص الملفوف -مصنع","sku":"sk-0199","category":"Batch","price":0.0,"is_semi":true},{"name":"محلول  نقح دجاج -مصنع","sku":"sk-0198","category":"Batch","price":0.0,"is_semi":true},{"name":"خليط الدقيق - مصنع","sku":"sk-0197","category":"Batch","price":0.0,"is_semi":true},{"name":"خليط البانكو -مصنع","sku":"sk-0196","category":"Batch","price":0.0,"is_semi":true},{"name":"ترافل صوص -مصنع","sku":"sk-0195","category":"Batch","price":0.0,"is_semi":true},{"name":"صوص البيون - مصنع","sku":"sk-0115","category":"Batch","price":0.0,"is_semi":true},{"name":"بطاط مهروسة  -مصنع","sku":"sk-0108","category":"Batch","price":0.0,"is_semi":true},{"name":"ماشروم صوص - مصنع","sku":"sk-0107","category":"Batch","price":0.0,"is_semi":true},{"name":"لحم مكس برجر باتي  جديد - مصنع","sku":"sk-0103","category":"Batch","price":0.0,"is_semi":true},{"name":"خلطة ملك شك - مصنع","sku":"sk-0100","category":"Batch","price":0.0,"is_semi":true},{"name":"صلصة زبدة الفول السوداني- مصنع","sku":"sk-0099","category":"Batch","price":0.0,"is_semi":true},{"name":"قرفة + سكر مكس - مصنع","sku":"sk-0097","category":"Batch","price":0.0,"is_semi":true},{"name":"ماشروم سوتيه - مصنع","sku":"sk-0096","category":"Batch","price":0.0,"is_semi":true},{"name":"فلفل اخضر سوتيه - مصنع","sku":"sk-0095","category":"Batch","price":0.0,"is_semi":true},{"name":"بصل مكرمل - مصنع","sku":"sk-0094","category":"Batch","price":0.0,"is_semi":true},{"name":"بهارات مكس ملح + فلفل اسود - مصنع","sku":"sk-0093","category":"Batch","price":0.0,"is_semi":true},{"name":"بصل كريسبي باتيه - مصنع","sku":"sk-0091","category":"Batch","price":0.0,"is_semi":true},{"name":"لحم برجر مكس سماش - مصنع","sku":"sk-0090","category":"Batch","price":0.0,"is_semi":true},{"name":"صوص هاني ماسترد- مصنع","sku":"sk-0083","category":"Batch","price":0.0,"is_semi":true},{"name":"صوص سماش  برجر - مصنع","sku":"sk-0080","category":"Batch","price":0.0,"is_semi":true},{"name":"صوص ابيض استك - مصنع","sku":"sk-0079","category":"Batch","price":0.0,"is_semi":true},{"name":"لحم تشاك رول ارجنتيني برجر - مصنع","sku":"sk-0077","category":"Batch","price":0.0,"is_semi":true},{"name":"صوص  احمر حار - مصنع","sku":"sk-0076","category":"Batch","price":0.0,"is_semi":true},{"name":"لحم بلاك انجوس ريب اي ارجنتيني  -مصنع","sku":"sk-0075","category":"Batch","price":0.0,"is_semi":true}],"ingredients":[{"name":"شو كلاته حبوب هيرش","sku":"sk-0182","unit":"جرام","cost":9.9e-05,"category":"بقالة"},{"name":"سوفلية براوني","sku":"sk-0104","unit":"حبة","cost":0.0,"category":"بقالة"},{"name":"بيض عادي","sku":"sk-0102","unit":"حبة","cost":0.014444,"category":"بقالة"},{"name":"لبن المراعي","sku":"sk-0088","unit":"ميليلتر","cost":0.0,"category":"بقالة"},{"name":"كارميل","sku":"sk-0025","unit":"جرام","cost":5e-06,"category":"بقالة"},{"name":"خلطة التغطية للقلي","sku":"sk-0014","unit":"جرام","cost":0.0,"category":"بقالة"},{"name":"قرفة ناعم فرشلي","sku":"sk-0089","unit":"جرام","cost":0.0,"category":"بهارات"},{"name":"عيدان اسنان مغلف 1000 حبة","sku":"sk-0230","unit":"علبة","cost":0.0,"category":"خشب"},{"name":"زيت دلال تنك","sku":"sk-0035","unit":"ميليلتر","cost":0.0,"category":"زيوت"},{"name":"مايونيز كبير","sku":"sk-0181","unit":"جرام","cost":4e-06,"category":"صلصات & صوصات"},{"name":"فرنش توست كيك","sku":"sk-0101","unit":"جرام","cost":0.0,"category":"مخبوزات"},{"name":"بيف هود دوج","sku":"sk-0257","unit":"جرام","cost":0.0,"category":"دجاج"},{"name":"صدور دجاج تندر 2.5*4","sku":"sk-0192","unit":"جرام","cost":1.8e-05,"category":"دجاج"},{"name":"صدور دجاج المراعي","sku":"sk-0085","unit":"جرام","cost":0.0,"category":"دجاج"},{"name":"لحم تشاك رول ارجنتيني","sku":"sk-0004","unit":"جرام","cost":4e-05,"category":"لحوم"},{"name":"لحم بلاك انجوس ريب اي ارجنتيني","sku":"sk-0003","unit":"جرام","cost":0.000101,"category":"لحوم"},{"name":"CHOCOLATE SAUCE -FACTORY","sku":"sk-0105","unit":"ميليلتر","cost":6e-06,"category":"مشروبات"},{"name":"مياة نوفا غازية","sku":"sk-0005","unit":"زجاجة","cost":0.086806,"category":"مشروبات"},{"name":"مياة نوفا عادي","sku":"sk-0002","unit":"زجاجة","cost":0.052917,"category":"مشروبات"},{"name":"مشروب غازي","sku":"sk-0001","unit":"زجاجة","cost":0.081738,"category":"مشروبات"},{"name":"جبنة موتزريلا","sku":"sk-0258","unit":"جرام","cost":0.0,"category":"اجبان"},{"name":"جبنة شيدر سائلة بيضاء المراعي","sku":"sk-0239","unit":"جرام","cost":6.3e-05,"category":"اجبان"},{"name":"جبنة شيدر بيضاء","sku":"sk-0238","unit":"جرام","cost":5.7e-05,"category":"اجبان"},{"name":"جبنة شيدر حمراء","sku":"sk-0237","unit":"جرام","cost":5.6e-05,"category":"اجبان"},{"name":"صلصة جبنة الشيدر ريليانس معتق 3 كيلو","sku":"sk-0193","unit":"جرام","cost":4e-06,"category":"اجبان"},{"name":"جبنة جوداء","sku":"sk-0187","unit":"جرام","cost":0.0,"category":"اجبان"},{"name":"جبنة شيدر شرائح","sku":"sk-0010","unit":"جرام","cost":1.4e-05,"category":"اجبان"},{"name":"جمبري 30/40 بدون ثلج كامل","sku":"sk-0247","unit":"جرام","cost":0.0,"category":"اسماك"},{"name":"بسكوت زبدة فول سوداني","sku":"sk-0098","unit":"حبة","cost":0.051267,"category":"بقالة"},{"name":"سكر ابيض ناعم","sku":"sk-0084","unit":"جرام","cost":5e-06,"category":"بقالة"},{"name":"بسكوت اوريو كلاسيك","sku":"sk-0038","unit":"حبة","cost":0.023905,"category":"بقالة"},{"name":"بانسوفت ايس كريم","sku":"sk-0023","unit":"جرام","cost":4.6e-05,"category":"بقالة"},{"name":"حليب نادك","sku":"sk-0009","unit":"مليلتر","cost":4e-06,"category":"بقالة"},{"name":"بكنج بودر","sku":"sk-0259","unit":"علبة","cost":2.6083,"category":"بهارات"},{"name":"بهارات فرشلي","sku":"sk-0256","unit":"جرام","cost":0.000648,"category":"بهارات"},{"name":"فرشلي ورق حصى البان 170ج","sku":"sk-0254","unit":"جرام","cost":0.000711,"category":"بهارات"},{"name":"شيلي بودر","sku":"sk-0235","unit":"جرام","cost":4.9e-05,"category":"بهارات"},{"name":"سيراشا بودر","sku":"sk-0234","unit":"جرام","cost":0.0,"category":"بهارات"},{"name":"فلفل مجروش","sku":"sk-0233","unit":"جرام","cost":0.004519,"category":"بهارات"},{"name":"خلطة دجاج  كريسبي ofood","sku":"sk-0194","unit":"جرام","cost":0.0,"category":"بهارات"},{"name":"كولتالي كارباتشيو الكماة","sku":"sk-0188","unit":"جرام","cost":0.0,"category":"بهارات"},{"name":"باربيكا مدخنة بودرة","sku":"sk-0186","unit":"جرام","cost":0.005615,"category":"بهارات"},{"name":"بصل مطحون فرشلي","sku":"sk-0092","unit":"جرام","cost":0.004594,"category":"بهارات"},{"name":"زعتر مجفف","sku":"sk-0082","unit":"جرام","cost":0.0,"category":"بهارات"},{"name":"ثوم مطحون","sku":"sk-0081","unit":"جرام","cost":7.4e-05,"category":"بهارات"},{"name":"توابل الكيجن","sku":"sk-0030","unit":"جرام","cost":0.001062,"category":"بهارات"},{"name":"فلفل اسود حب","sku":"sk-0022","unit":"جرام","cost":0.0,"category":"بهارات"},{"name":"كيجن","sku":"sk-0020","unit":"جرام","cost":0.0,"category":"بهارات"},{"name":"نشاء ابيض","sku":"sk-0019","unit":"جرام","cost":4e-06,"category":"بهارات"},{"name":"ملح خشن","sku":"sk-0016","unit":"جرام","cost":2e-06,"category":"بهارات"},{"name":"بانكو كبير","sku":"sk-0013","unit":"جرام","cost":2.5e-05,"category":"بهارات"},{"name":"بانكو صغير","sku":"sk-0012","unit":"جرام","cost":0.0,"category":"بهارات"},{"name":"ملح طبخ","sku":"sk-0011","unit":"جرام","cost":1.5e-05,"category":"بهارات"},{"name":"بطاط حلوة","sku":"sk-0255","unit":"جرام","cost":1.8e-05,"category":"خضار"},{"name":"خيار طازج","sku":"sk-0253","unit":"جرام","cost":0.0,"category":"خضار"},{"name":"خس مدور اسباني","sku":"sk-0252","unit":"جرام","cost":1e-05,"category":"خضار"},{"name":"طماطم طازجة","sku":"sk-0251","unit":"جرام","cost":0.0,"category":"خضار"},{"name":"بصل اخضر","sku":"sk-0231","unit":"جرام","cost":0.0,"category":"خضار"},{"name":"جزر","sku":"sk-0211","unit":"جرام","cost":6e-06,"category":"خضار"},{"name":"ملفوف احمر (كرنب )","sku":"sk-0210","unit":"جرام","cost":6e-06,"category":"خضار"},{"name":"ملفوف ابيض (كرنب )","sku":"sk-0209","unit":"جرام","cost":4e-06,"category":"خضار"},{"name":"بطاطس مجمد","sku":"sk-0208","unit":"جرام","cost":0.0,"category":"خضار"},{"name":"ليمون كبير","sku":"sk-0207","unit":"جرام","cost":7e-06,"category":"خضار"},{"name":"خيار مخلل","sku":"sk-0183","unit":"جرام","cost":2.8e-05,"category":"خضار"},{"name":"ذرة كورن","sku":"sk-0178","unit":"قطعة","cost":0.0,"category":"خضار"},{"name":"توت ازرق مجفف 200","sku":"sk-0114","unit":"جرام","cost":0.0,"category":"خضار"},{"name":"فطر ابيض - ماشروم","sku":"sk-0042","unit":"جرام","cost":2.8e-05,"category":"خضار"},{"name":"فلفل رومي اخضر","sku":"sk-0041","unit":"جرام","cost":7e-06,"category":"خضار"},{"name":"بطاطس عادي","sku":"sk-0040","unit":"جرام","cost":4e-06,"category":"خضار"},{"name":"بصل","sku":"sk-0039","unit":"جرام","cost":5e-06,"category":"خضار"},{"name":"هلابينو","sku":"sk-0024","unit":"جرام","cost":8e-06,"category":"خضار"},{"name":"زيت الكماه السوداء","sku":"sk-0185","unit":"ميليلتر","cost":0.001093,"category":"زيوت"},{"name":"زيت الكماه البيضاء","sku":"sk-0184","unit":"مليلتر","cost":0.0,"category":"زيوت"},{"name":"زبدة نادك","sku":"sk-0087","unit":"جرام","cost":0.00082,"category":"زيوت"},{"name":"كريمة طبخ المراعي","sku":"sk-0086","unit":"ميليلتر","cost":1.6e-05,"category":"زيوت"},{"name":"زيت عادي صويا","sku":"sk-0036","unit":"ميليلتر","cost":1e-06,"category":"زيوت"},{"name":"زيت العافية","sku":"sk-0021","unit":"ميليلتر","cost":2e-06,"category":"زيوت"},{"name":"كاتشب هانز","sku":"sk-0214","unit":"جرام","cost":4.2e-05,"category":"صلصات & صوصات"},{"name":"خل بونتي جديد","sku":"sk-0213","unit":"مليلتر","cost":8e-05,"category":"صلصات & صوصات"},{"name":"دبس رمان","sku":"sk-0116","unit":"جرام","cost":0.0,"category":"صلصات & صوصات"},{"name":"كاتشب شفرات","sku":"sk-0111","unit":"حبة","cost":7.7e-05,"category":"صلصات & صوصات"},{"name":"صلصة الباربيكيو","sku":"sk-0037","unit":"جرام","cost":4.3e-05,"category":"صلصات & صوصات"},{"name":"صلصة الصويا","sku":"sk-0034","unit":"ميليلتر","cost":0.000105,"category":"صلصات & صوصات"},{"name":"خل طبيعي","sku":"sk-0033","unit":"ميليلتر","cost":5.1e-05,"category":"صلصات & صوصات"},{"name":"صلصة اللحم","sku":"sk-0032","unit":"ميليلتر","cost":0.000137,"category":"صلصات & صوصات"},{"name":"مايونيز","sku":"sk-0031","unit":"جرام","cost":8.2e-05,"category":"صلصات & صوصات"},{"name":"خردل صغير","sku":"sk-0029","unit":"جرام","cost":0.000137,"category":"صلصات & صوصات"},{"name":"صلصة ورشستر","sku":"sk-0028","unit":"جرام","cost":0.000131,"category":"صلصات & صوصات"},{"name":"عسل","sku":"sk-0027","unit":"جرام","cost":3.2e-05,"category":"صلصات & صوصات"},{"name":"توباسكو","sku":"sk-0026","unit":"جرام","cost":8.4e-05,"category":"صلصات & صوصات"},{"name":"كاتشب كبير","sku":"sk-0015","unit":"جرام","cost":3e-06,"category":"صلصات & صوصات"},{"name":"فلية بقر يرازيلي مجمد تندر لوين","sku":"sk-0260","unit":"جرام","cost":0.0,"category":"لحوم"},{"name":"سجق فرشلي لحم","sku":"sk-0191","unit":"جرام","cost":0.0,"category":"لحوم"},{"name":"دقيق ابيض","sku":"sk-0017","unit":"جرام","cost":2e-06,"category":"مخبوزات"},{"name":"خبز بريوش برجر","sku":"sk-0008","unit":"حبة","cost":1.59835,"category":"مخبوزات"},{"name":"خبز بريوش صغير","sku":"sk-0007","unit":"حبة","cost":1.55,"category":"مخبوزات"},{"name":"خبز بريوش كبير","sku":"sk-0006","unit":"حبة","cost":1.65,"category":"مخبوزات"},{"name":"سيروب استروبري","sku":"sk-0043","unit":"ميليلتر","cost":4.9e-05,"category":"مشروبات"},{"name":"قفازات بلاستيك شفاف","sku":"sk-0190","unit":"حبة","cost":8.6e-05,"category":"بلاستيك"},{"name":"كاسات شفاف صغير","sku":"sk-0180","unit":"حبة","cost":0.0,"category":"بلاستيك"},{"name":"كاسات 8 اونز","sku":"sk-0179","unit":"حبة","cost":0.003698,"category":"بلاستيك"},{"name":"مغرفة بطاطس ابيض 12 اونز","sku":"sk-0167","unit":"حبة","cost":0.000145,"category":"بلاستيك"},{"name":"غطاء علب دائري 450/250","sku":"sk-0166","unit":"حبة","cost":0.000657,"category":"بلاستيك"},{"name":"اكياس علاقي مقاس 15 شفاف","sku":"sk-0072","unit":"جرام","cost":0.0,"category":"بلاستيك"},{"name":"مصاص عصير بلاستيك","sku":"sk-0071","unit":"حبة","cost":0.000707,"category":"بلاستيك"},{"name":"علب صوص اسود 2 اونز","sku":"sk-0067","unit":"حبة","cost":0.000535,"category":"بلاستيك"},{"name":"شوك مغلف اسود","sku":"sk-0055","unit":"حبة","cost":8.7e-05,"category":"بلاستيك"},{"name":"سكاكين مغلف اسود","sku":"sk-0054","unit":"حبة","cost":0.00029,"category":"بلاستيك"},{"name":"ملاعق اكل مغلف اسود","sku":"sk-0053","unit":"حبة","cost":8e-05,"category":"بلاستيك"},{"name":"غطاء كاسات شفافة","sku":"sk-0047","unit":"حبة","cost":0.000224,"category":"بلاستيك"},{"name":"كاسات شفافة 16 اونز","sku":"sk-0046","unit":"حبة","cost":0.000223,"category":"بلاستيك"},{"name":"اعواد خيزران 1*200","sku":"sk-0189","unit":"ربطة","cost":1.299387,"category":"خشب"},{"name":"قصدير تغليف احمر 250MM*355MM","sku":"sk-0070","unit":"حبة","cost":0.000996,"category":"قصدير"},{"name":"قصدير تغليف اسود 250MM*355MM","sku":"sk-0069","unit":"حبة","cost":0.001,"category":"قصدير"},{"name":"وعاء دائري كرتوني 250 مل","sku":"sk-0165","unit":"حبة","cost":0.002887,"category":"كرتون"},{"name":"نايلون تغليف","sku":"sk-0052","unit":"رول","cost":22.24715,"category":"نايلون"},{"name":"ورق عازل","sku":"sk-0113","unit":"حبة","cost":6e-06,"category":"ورق"},{"name":"ورق تاريخ رول","sku":"sk-0110","unit":"حبة","cost":0.068251,"category":"ورق"},{"name":"كاسات ورقية 12 اونز","sku":"sk-0073","unit":"حبة","cost":0.000157,"category":"ورق"},{"name":"مناديل معطر ابيض","sku":"sk-0068","unit":"حبة","cost":0.000108,"category":"ورق"},{"name":"اكياس ورقية مقاس 15 احمر","sku":"sk-0066","unit":"حبة","cost":0.006,"category":"ورق"},{"name":"اكياس ورقية مقاس 13 اسود","sku":"sk-0065","unit":"حبة","cost":0.006,"category":"ورق"},{"name":"مناديل ابيض عادي","sku":"sk-0064","unit":"حبة","cost":0.000132,"category":"ورق"},{"name":"حامل كاسات فتحتين","sku":"sk-0051","unit":"حبة","cost":0.000512,"category":"ورق"},{"name":"حامل كاسات اربع فتحات","sku":"sk-0050","unit":"حبة","cost":0.00096,"category":"ورق"},{"name":"ورق تغليف بطبقة عازلة","sku":"sk-0049","unit":"حبة","cost":0.00018,"category":"ورق"},{"name":"ورق زبدة","sku":"sk-0048","unit":"سم","cost":0.0,"category":"ورق"}]}, bb: {"products":[{"name":"حليب مبخر","sku":"sk-0160","category":"Meal","price":5.0},{"name":"مشكل بطاطس","sku":"sk-0159","category":"Meal","price":12.0},{"name":"وجبة اقتصاديه -meal","sku":"sk-0158","category":"Meal","price":16.0},{"name":"ملوخيه مع الارز  -mulukhiyah with white rice","sku":"sk-0157","category":"Meal","price":15.0},{"name":"ارز ابيض ساده -plain white rice","sku":"sk-0156","category":"Meal","price":10.0},{"name":"باميه -bamyyeh","sku":"sk-0155","category":"Meal","price":14.0},{"name":"سلطة خضار -Vegetable salad","sku":"sk-0154","category":"Meal","price":12.0},{"name":"محمر دجاج -Chicken Muhammar","sku":"sk-0153","category":"Meal","price":24.5},{"name":"كبسة باب البلد دجاج -Chicken Kabsa Bab Al Balad","sku":"sk-0152","category":"Meal","price":24.5},{"name":"وجبة الفطور -Breakfast","sku":"sk-0137","category":"Meal","price":27.0},{"name":"زيت زيتون","sku":"sk-0136","category":"Meal","price":3.0},{"name":"شطه حار","sku":"sk-0133","category":"Meal","price":2.0},{"name":"طحينه كبير","sku":"sk-0131","category":"Meal","price":4.0},{"name":"طحينه صغير","sku":"sk-0130","category":"Meal","price":2.0},{"name":"بطاطس مقليه","sku":"sk-0109","category":"Meal","price":12.0},{"name":"بيبسي دايت - Diet Pepsi","sku":"sk-0104","category":"Meal","price":7.0},{"name":"ميرندا برتقال - Miranda Orange","sku":"sk-0103","category":"Meal","price":7.0},{"name":"ميرندا حمضيات - Mirinda citrus","sku":"sk-0102","category":"Meal","price":7.0},{"name":"سفن اب - 7Up","sku":"sk-0101","category":"Meal","price":7.0},{"name":"سمبوسه لحم - Meat samosa","sku":"sk-0094","category":"Meal","price":14.0},{"name":"سمبوسه جبن - Cheese samosa","sku":"sk-0093","category":"Meal","price":14.0},{"name":"زيتون مع الزعتر- Olives with thyme","sku":"sk-0077","category":"Meal","price":8.0},{"name":"مربى فراولة - strawberry jam","sku":"sk-0075","category":"Meal","price":8.0},{"name":"عسل سدر - sidr honey","sku":"sk-0074","category":"Meal","price":20.0},{"name":"عسل - honey","sku":"sk-0073","category":"Meal","price":8.0},{"name":"نوتيلا - Nutella","sku":"sk-0072","category":"Meal","price":8.0},{"name":"جبنة حلوم - Halloum cheese","sku":"sk-0070","category":"Meal","price":22.0},{"name":"جبنة قشقوان - Kashkaval cheese","sku":"sk-0069","category":"Meal","price":15.0},{"name":"جبنة عكاوي - Akkawi cheese","sku":"sk-0067","category":"Meal","price":15.0},{"name":"جبنة بيضاء وجبنة شيدر -  White cheese and cheddar cheese","sku":"sk-0066","category":"Meal","price":10.0},{"name":"جبنة سائلة - Liquid cheese","sku":"sk-0065","category":"Meal","price":8.0},{"name":"قشطة - cream","sku":"sk-0064","category":"Meal","price":8.0},{"name":"لبنة - Labneh","sku":"sk-0063","category":"Meal","price":8.0},{"name":"حلاوة طحينية - halawat tahinia","sku":"sk-0062","category":"Meal","price":8.0},{"name":"زيتون - zaytun","sku":"sk-0061","category":"Meal","price":8.0},{"name":"تعتيمة زمان - tatymat zaman","sku":"sk-0060","category":"Meal","price":37.0},{"name":"عصير ليمون نعناع - Lemon mint juice","sku":"sk-0059","category":"Meal","price":18.0},{"name":"عصير برتقال - orange juice","sku":"sk-0058","category":"Meal","price":19.0},{"name":"بيبسي - Pepsi","sku":"sk-0057","category":"Meal","price":7.0},{"name":"مياه معدنية - Mineral water","sku":"sk-0056","category":"Meal","price":5.0},{"name":"قهوة اليوم - Today coffee","sku":"sk-0055","category":"Meal","price":8.0},{"name":"دلة قهوة عربي - Arabic coffee dallah","sku":"sk-0054","category":"Meal","price":15.0},{"name":"براد شاي عدني - Adani tea teapot","sku":"sk-0053","category":"Meal","price":20.0},{"name":"براد شاي حليب - melk tea teapot","sku":"sk-0052","category":"Meal","price":20.0},{"name":"براد شاي اخضر - green tea teapot","sku":"sk-0051","category":"Meal","price":13.0},{"name":"براد شاي احمر - red tea teapot","sku":"sk-0050","category":"Meal","price":13.0},{"name":"كاسة شاي عدني - Adani Tea Cup","sku":"sk-0049","category":"Meal","price":5.0},{"name":"كاسة شاي حليب - cup of milk tea","sku":"sk-0048","category":"Meal","price":5.0},{"name":"كاسة شاي اخضر -  cup of green tea","sku":"sk-0047","category":"Meal","price":3.0},{"name":"كاسة شاي احمر - cup of red tea","sku":"sk-0046","category":"Meal","price":3.0},{"name":"خبز ملوح - Mallouh bread","sku":"sk-0045","category":"Meal","price":4.0},{"name":"فطيرة - pie","sku":"sk-0044","category":"Meal","price":3.0},{"name":"تميس زعتر بالزيت الزيتون - Zaatar Tamees with olive oil","sku":"sk-0043","category":"Meal","price":9.0},{"name":"تميس جبنة شيدر - Cheddar cheese tamis","sku":"sk-0042","category":"Meal","price":10.0},{"name":"تميس بر - Tamees bur","sku":"sk-0041","category":"Meal","price":4.0},{"name":"تميس حلاوه - Sweet Tamees","sku":"sk-0040","category":"Meal","price":9.0},{"name":"تميس سمن - Tamees ghee","sku":"sk-0039","category":"Meal","price":5.0},{"name":"تميس بسكوت - biscuit","sku":"sk-0038","category":"Meal","price":4.0},{"name":"تميس عادي - Regular Tamis","sku":"sk-0037","category":"Meal","price":4.0},{"name":"عريكة دخن - Areeka Dakhn","sku":"sk-0036","category":"Meal","price":29.0},{"name":"عريكة باب البلد - Bab Al-Balad Areeka","sku":"sk-0035","category":"Meal","price":26.0},{"name":"عريكة قشطة عسل جبن شيدر - Areeka cream honey cheddar cheese","sku":"sk-0034","category":"Meal","price":23.0},{"name":"عريكة قشطة عسل - Areeka with cream and honey","sku":"sk-0033","category":"Meal","price":20.0},{"name":"عريكة قشطة - Areeka cream","sku":"sk-0032","category":"Meal","price":16.0},{"name":"عريكة زمان - Areeka Zaman","sku":"sk-0031","category":"Meal","price":12.0},{"name":"معصوب باب البلد - Masoub Bab Al Balad","sku":"sk-0030","category":"Meal","price":26.0},{"name":"معصوب حليب - Milk masoub","sku":"sk-0029","category":"Meal","price":15.0},{"name":"معصوب قشطة حليب - Milk cream masoub","sku":"sk-0028","category":"Meal","price":22.0},{"name":"معصوب قشطة عسل - Honey cream masoub","sku":"sk-0027","category":"Meal","price":20.0},{"name":"معصوب قشطة - Masoub cream","sku":"sk-0026","category":"Meal","price":16.0},{"name":"معصوب زمان اول - Masoub","sku":"sk-0025","category":"Meal","price":12.0},{"name":"فطيرة لبنة زعتر - Labneh and zaatar pie","sku":"sk-0024","category":"Meal","price":16.0},{"name":"فطيرة نوتيلا - Nutella pie","sku":"sk-0023","category":"Meal","price":19.0},{"name":"فطيرة جبنة شيدر باطماطم -  Cheddar cheese and tomato pie","sku":"sk-0022","category":"Meal","price":15.0},{"name":"مطبق قشطة حلو - Sweet cream mutabbaq","sku":"sk-0021","category":"Meal","price":14.0},{"name":"مطبق موز حلو - Sweet banana mutabbaq","sku":"sk-0020","category":"Meal","price":14.0},{"name":"مطبق جبنة حلو - Sweet cheese mutabbaq","sku":"sk-0019","category":"Meal","price":14.0},{"name":"مطبق تونه - Tuna mutabbaq","sku":"sk-0018","category":"Meal","price":18.0},{"name":"مطبق خضار جبنة بيضاء - White cheese vegetable mutabbaq","sku":"sk-0017","category":"Meal","price":17.0},{"name":"مطبق لحم - Mutabbaq meat","sku":"sk-0016","category":"Meal","price":18.0},{"name":"مطبق خضار - Vegetable mutabbaq","sku":"sk-0015","category":"Meal","price":16.0},{"name":"فاصوليا بيض - Egg beans","sku":"sk-0014","category":"Meal","price":17.0},{"name":"تونه - tuna","sku":"sk-0013","category":"Meal","price":21.0},{"name":"كبده اجبان - Liver with cheese","sku":"sk-0012","category":"Meal","price":37.0},{"name":"كبده - Liver","sku":"sk-0011","category":"Meal","price":33.0},{"name":"مقلقل لحم - Meat mqalqal","sku":"sk-0010","category":"Meal","price":35.0},{"name":"بيض باب البلد - Bab al-Balad eggs","sku":"sk-0009","category":"Meal","price":20.0},{"name":"شكشوكة باب البلد - Shakshuka Bab Al Balad","sku":"sk-0008","category":"Meal","price":22.0},{"name":"شكشوكة - Shakshuka","sku":"sk-0007","category":"Meal","price":17.0},{"name":"بيض اومليت - Omelette eggs","sku":"sk-0006","category":"Meal","price":16.0},{"name":"بيض عيون - Eye eggs","sku":"sk-0005","category":"Meal","price":15.0},{"name":"قلابة باب البلد - Bab al-Balad Qalabah","sku":"sk-0004","category":"Meal","price":25.0},{"name":"قلابة - Qalabah","sku":"sk-0003","category":"Meal","price":16.0},{"name":"فول مبخر - Foul mubakhar","sku":"sk-0002","category":"Meal","price":17.0},{"name":"فول جره - foul Jarrah","sku":"sk-0001","category":"Meal","price":15.0}],"semi_products":[{"name":"تصنيع لحم المطبق المفروم","sku":"sk-0155","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع فاصولياء البيضاء","sku":"sk-0156","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع عجينة تميز باب البلد","sku":"sk-0157","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع عجينة تميز البسكوت","sku":"sk-0158","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع عجينة تميز البر","sku":"sk-0159","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع عجينة المعصوب","sku":"sk-0160","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع عجينة المطبق","sku":"sk-0161","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع عجينة الدخن","sku":"sk-0162","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع صلصة الطماطم","sku":"sk-0163","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع جبنة الحلو للمطبق","sku":"sk-0164","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع تسمين العجين","sku":"sk-0165","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع شطه حار","sku":"sk-0166","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع شطة بارد","sku":"sk-0167","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع طحينه","sku":"sk-0168","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع الفلافل","sku":"sk-0169","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع الحمص","sku":"sk-0170","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع بهارات المطبق","sku":"sk-0172","category":"Batch","price":0.0,"is_semi":true},{"name":"تصنيع بهارات العدني","sku":"sk-0173","category":"Batch","price":0.0,"is_semi":true}],"ingredients":[{"name":"كبدة معلاق","sku":"sk-0001","unit":"جرام","cost":0.04,"category":"لحوم"},{"name":"لحم عجل","sku":"sk-0002","unit":"جرام","cost":0.05,"category":"لحوم"},{"name":"هيل امريكي","sku":"sk-0003","unit":"جرام","cost":0.166436,"category":"بهارات وتوابل"},{"name":"لحم مفروم","sku":"sk-0004","unit":"جرام","cost":0.035,"category":"لحوم"},{"name":"قشطة ارقاء","sku":"sk-0005","unit":"حبه","cost":0.0,"category":"مشتقات اجبان وحليب"},{"name":"حليب لوناء 410جرام","sku":"sk-0006","unit":"لتر","cost":0.005589,"category":"مشتقات اجبان وحليب"},{"name":"حليب بودره الطائي","sku":"sk-0007","unit":"جرام","cost":0.0271,"category":"مشتقات اجبان وحليب"},{"name":"حليب الممتاز 170 جرام","sku":"sk-0008","unit":"ملي لتر","cost":0.0,"category":"مشتقات اجبان وحليب"},{"name":"جبنة موزاريلا 2.3كيلو","sku":"sk-0009","unit":"جرام","cost":0.019022,"category":"مشتقات اجبان وحليب"},{"name":"جبنة فيتا بيضاء 16 كيلو","sku":"sk-0010","unit":"جرام","cost":0.0,"category":"مشتقات اجبان وحليب"},{"name":"جبنة شيدر ياسمين 6*1.8 كجم","sku":"sk-0011","unit":"جرام","cost":0.028601,"category":"مشتقات اجبان وحليب"},{"name":"جبنة المراعي كاسات 900جرام","sku":"sk-0012","unit":"جرام","cost":0.016667,"category":"مشتقات اجبان وحليب"},{"name":"بيض حجم كبير الغربيه","sku":"sk-0013","unit":"حبه","cost":0.0,"category":"مواد غذائية"},{"name":"جبنه عكاوي","sku":"sk-0014","unit":"جرام","cost":0.0,"category":"مشتقات اجبان وحليب"},{"name":"جبنة قشقون","sku":"sk-0015","unit":"جرام","cost":0.0,"category":"مشتقات اجبان وحليب"},{"name":"جبنة حلوم","sku":"sk-0016","unit":"جرام","cost":0.0248,"category":"مشتقات اجبان وحليب"},{"name":"جبنة قريش","sku":"sk-0017","unit":"جرام","cost":0.0,"category":"مشتقات اجبان وحليب"},{"name":"زيتون كلاماتا","sku":"sk-0018","unit":"جرام","cost":0.02,"category":"مواد غذائية"},{"name":"زيتون مشوي","sku":"sk-0019","unit":"جرام","cost":0.0,"category":"مواد غذائية"},{"name":"قشطة بلدي","sku":"sk-0020","unit":"جرام","cost":0.0,"category":"مشتقات اجبان وحليب"},{"name":"عسل سدر","sku":"sk-0021","unit":"جرام","cost":0.0,"category":"مواد غذائية"},{"name":"مربى فروله","sku":"sk-0022","unit":"جرام","cost":0.0,"category":"مواد غذائية"},{"name":"مربى خوخ","sku":"sk-0023","unit":"جرام","cost":0.0,"category":"مواد غذائية"},{"name":"قشطة قيمر","sku":"sk-0024","unit":"جرام","cost":0.016,"category":"مشتقات اجبان وحليب"},{"name":"حليب ابو قوس 170 جرام","sku":"sk-0025","unit":"جرام","cost":0.011642,"category":"مشتقات اجبان وحليب"},{"name":"عسل الزهور الشفاء","sku":"sk-0026","unit":"جرام","cost":0.0,"category":"مواد غذائية"},{"name":"نعناع طازج","sku":"sk-0027","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"موز","sku":"sk-0028","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"ليمون صغير","sku":"sk-0029","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"ليمون افريقي","sku":"sk-0030","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"كزبرة طازجة","sku":"sk-0031","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"كراث","sku":"sk-0032","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"فلفل رومي (احمر)","sku":"sk-0033","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"فلفل رومي ( اخضر)","sku":"sk-0034","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"فلفل حار اخضر","sku":"sk-0035","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"طماكم ابو شوكه","sku":"sk-0036","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"ثوم","sku":"sk-0037","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"بطاطس طازجه","sku":"sk-0038","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"بصل اخضر","sku":"sk-0039","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"بصل احمر","sku":"sk-0040","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"برتقال","sku":"sk-0041","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"أوراق حبق طازجة","sku":"sk-0042","unit":"جرام","cost":0.0,"category":"بهارات وتوابل"},{"name":"خس اخضر","sku":"sk-0043","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"شمندر","sku":"sk-0044","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"زنجبيل فرش","sku":"sk-0045","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"افوكادو","sku":"sk-0046","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"خيار","sku":"sk-0047","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"جزر","sku":"sk-0048","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"نوتيلا","sku":"sk-0049","unit":"جرام","cost":0.0,"category":"صوصات وصلصات"},{"name":"مكعبات ماجي","sku":"sk-0050","unit":"جرام","cost":0.0,"category":"بهارات وتوابل"},{"name":"معجون الطماطم توسان 830 جرام","sku":"sk-0051","unit":"جرام","cost":0.0,"category":"صوصات وصلصات"},{"name":"معجون التمر 5 كيلو","sku":"sk-0052","unit":"جرام","cost":0.0,"category":"مواد غذائية"},{"name":"محسن خبز سعودي","sku":"sk-0053","unit":"جرام","cost":0.0123,"category":"مخبوزات"},{"name":"لبنة تركيه لبنيتا 2.750كيلو","sku":"sk-0054","unit":"جرام","cost":0.0,"category":"مشتقات اجبان وحليب"},{"name":"كاجو 10 كيلو","sku":"sk-0055","unit":"جرام","cost":0.0,"category":"بهارات وتوابل"},{"name":"فول مدام 400 جم * 24","sku":"sk-0056","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"فول جره","sku":"sk-0057","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"فحم طبيعي","sku":"sk-0058","unit":"جرام","cost":0.0,"category":"فحم"},{"name":"عجين الرقاق","sku":"sk-0059","unit":"جرام","cost":0.006087,"category":"مخبوزات"},{"name":"طحينيه الجميل15 كيلو","sku":"sk-0060","unit":"جرام","cost":0.0,"category":"مواد غذائية"},{"name":"صلصه رنا الحارة450جرام","sku":"sk-0061","unit":"جرام","cost":0.0,"category":"صوصات وصلصات"},{"name":"شاي الكبوس","sku":"sk-0062","unit":"جرام","cost":0.0214,"category":"مشروبات"},{"name":"شاي ابو جبل","sku":"sk-0063","unit":"جرام","cost":0.062,"category":"مشروبات"},{"name":"سمن قودي 12 قطعة * 1.36 كجم","sku":"sk-0064","unit":"جرام","cost":0.0,"category":"زيوت"},{"name":"سمن ارقى15 كيلو","sku":"sk-0065","unit":"جرام","cost":0.009,"category":"زيوت"},{"name":"سكر ناعم 50 كيلو","sku":"sk-0066","unit":"جرام","cost":0.0215,"category":"بهارات وتوابل"},{"name":"زيتون اسود الجوف","sku":"sk-0067","unit":"جرام","cost":0.024637,"category":"زيوت"},{"name":"زيتون اخضر الجوف","sku":"sk-0068","unit":"جرام","cost":0.024637,"category":"زيوت"},{"name":"زيت عافيه  2.9 لتر","sku":"sk-0069","unit":"ملي لتر","cost":0.043448,"category":"زيوت"},{"name":"زيت دلال نباتي 17 لتر","sku":"sk-0070","unit":"ملي لتر","cost":0.006118,"category":"زيوت"},{"name":"زيت الزيتون 10 لتر","sku":"sk-0071","unit":"ملي لتر","cost":0.021272,"category":"زيوت"},{"name":"دقيق بني - 45 / كجم","sku":"sk-0072","unit":"جرام","cost":0.000785,"category":"مخبوزات"},{"name":"دقيق المخابز الابيض","sku":"sk-0073","unit":"جرام","cost":0.000653,"category":"مخبوزات"},{"name":"دقيق الدخن","sku":"sk-0074","unit":"جرام","cost":0.006505,"category":"مخبوزات"},{"name":"خميره جافة فيكتوريا 500جرام","sku":"sk-0075","unit":"جرام","cost":0.0,"category":"مخبوزات"},{"name":"حلاوة طحينية 15 كيلو","sku":"sk-0076","unit":"جرام","cost":0.0076,"category":"مواد غذائية"},{"name":"تونه السعيده حجم 95 جرام","sku":"sk-0077","unit":"جرام","cost":0.689951,"category":"مواد غذائية"},{"name":"تونه السعيده حجم 185 جرام","sku":"sk-0078","unit":"جرام","cost":0.0,"category":"مواد غذائية"},{"name":"شاي اخضر","sku":"sk-0079","unit":"حبه","cost":0.0,"category":"مشروبات"},{"name":"قهوه اليوم","sku":"sk-0080","unit":"جرام","cost":0.0,"category":"مشروبات"},{"name":"قهوه عربي","sku":"sk-0081","unit":"جرام","cost":0.038911,"category":"مشروبات"},{"name":"ارز","sku":"sk-0082","unit":"جرام","cost":0.0,"category":"ارز"},{"name":"خل","sku":"sk-0083","unit":"ملي لتر","cost":0.0,"category":"بهارات وتوابل"},{"name":"تمر هندي","sku":"sk-0084","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"اصابع السكر المغلف","sku":"sk-0085","unit":"حبه","cost":0.0,"category":"مواد غذائية"},{"name":"سكر استافانيا","sku":"sk-0086","unit":"حبه","cost":0.0,"category":"مواد غذائية"},{"name":"كورن فليكس","sku":"sk-0087","unit":"جرام","cost":0.0,"category":"مواد غذائية"},{"name":"صلصله ارقي 800جرام","sku":"sk-0088","unit":"جرام","cost":0.0,"category":"صوصات وصلصات"},{"name":"كتشب رنا 550جرام","sku":"sk-0089","unit":"جرام","cost":0.0,"category":"صوصات وصلصات"},{"name":"كركديه","sku":"sk-0090","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"مناديل مبلله","sku":"sk-0094","unit":"حبه","cost":0.0,"category":"مواد البلاستيك والتغليف"},{"name":"طعقم معالق سفري 4*1","sku":"sk-0095","unit":"حبه","cost":60.83,"category":"مواد البلاستيك والتغليف"},{"name":"كاسات شاي ورقي 8 OZ","sku":"sk-0096","unit":"حبه","cost":0.0925,"category":"مواد البلاستيك والتغليف"},{"name":"كاسات عصير 16 OZ شفاف","sku":"sk-0097","unit":"حبه","cost":0.0,"category":"مواد البلاستيك والتغليف"},{"name":"مصاص","sku":"sk-0098","unit":"حبه","cost":0.0,"category":"مواد البلاستيك والتغليف"},{"name":"محراك شاي خشبي","sku":"sk-0099","unit":"حبه","cost":0.0,"category":"مواد البلاستيك والتغليف"},{"name":"صحون بلاستيك مقاس 500  مستطيل","sku":"sk-0100","unit":"حبه","cost":0.38,"category":"مواد البلاستيك والتغليف"},{"name":"صحون بلاستيك مقاس 700 مستطيل","sku":"sk-0101","unit":"حبه","cost":0.4,"category":"مواد البلاستيك والتغليف"},{"name":"علب دائريه مقاس450 جرام","sku":"sk-0102","unit":"حبه","cost":0.33632,"category":"مواد البلاستيك والتغليف"},{"name":"علب دائريه مقاس 100 جرام","sku":"sk-0103","unit":"حبه","cost":0.0,"category":"مواد البلاستيك والتغليف"},{"name":"علب دائريه مقاس  P2 صوص","sku":"sk-0104","unit":"حبه","cost":0.0,"category":"مواد البلاستيك والتغليف"},{"name":"اكياس بلاستيك مطبوعه باب البلد","sku":"sk-0105","unit":"كيلو","cost":0.0,"category":"مواد البلاستيك والتغليف"},{"name":"رول المنيوم مقاس 30","sku":"sk-0106","unit":"حبه","cost":27.511004,"category":"مواد البلاستيك والتغليف"},{"name":"رول تغليف شفاف","sku":"sk-0107","unit":"حبه","cost":0.0,"category":"مواد البلاستيك والتغليف"},{"name":"ورق زبده","sku":"sk-0108","unit":"حبه","cost":0.0,"category":"مواد البلاستيك والتغليف"},{"name":"سفره بلاستيك مقاس 120 *120","sku":"sk-0109","unit":"حبه","cost":0.000917,"category":"مواد البلاستيك والتغليف"},{"name":"اكياس ورقي مقاس 12 بني","sku":"sk-0110","unit":"حبه","cost":0.3646,"category":"مواد البلاستيك والتغليف"},{"name":"كرتون مطبق 240×240","sku":"sk-0122","unit":"حبه","cost":0.7,"category":"مواد البلاستيك والتغليف"},{"name":"صحون مطبق","sku":"sk-0123","unit":"حبه","cost":0.16,"category":"مواد البلاستيك والتغليف"},{"name":"ميرندا حمضيات","sku":"sk-0131","unit":"حبه","cost":0.0,"category":"مشروبات"},{"name":"ميرندا برتقال","sku":"sk-0132","unit":"حبه","cost":0.0,"category":"مشروبات"},{"name":"ماء نوفاء","sku":"sk-0133","unit":"حبه","cost":1.39675,"category":"مشروبات"},{"name":"سفن اب","sku":"sk-0134","unit":"حبه","cost":1.8025,"category":"مشروبات"},{"name":"بيبسي دايت","sku":"sk-0135","unit":"حبه","cost":1.8025,"category":"مشروبات"},{"name":"بيبسي","sku":"sk-0136","unit":"حبه","cost":1.902083,"category":"مشروبات"},{"name":"ملح علب 24 علبه  ساسا","sku":"sk-0137","unit":"جرام","cost":0.003155,"category":"بهارات وتوابل"},{"name":"مسحوق الزنجبيل","sku":"sk-0138","unit":"جرام","cost":0.02783,"category":"بهارات وتوابل"},{"name":"كيس ملح 50 كيلو","sku":"sk-0139","unit":"جرام","cost":0.00072,"category":"بهارات وتوابل"},{"name":"كزبره حب","sku":"sk-0140","unit":"جرام","cost":0.0,"category":"بهارات وتوابل"},{"name":"كركم","sku":"sk-0141","unit":"جرام","cost":0.01566,"category":"بهارات وتوابل"},{"name":"قرنفل حب","sku":"sk-0142","unit":"جرام","cost":0.0,"category":"بهارات وتوابل"},{"name":"فلفل اسود حب","sku":"sk-0143","unit":"جرام","cost":0.0,"category":"بهارات وتوابل"},{"name":"فاصولياء يمنيه بيضاء","sku":"sk-0144","unit":"جرام","cost":0.0,"category":"خضار وفواكة"},{"name":"سمسم","sku":"sk-0145","unit":"جرام","cost":0.0,"category":"بهارات وتوابل"},{"name":"سماق الشروق كيلو","sku":"sk-0146","unit":"جرام","cost":0.0,"category":"بهارات وتوابل"},{"name":"زعتر السلام كيلو","sku":"sk-0147","unit":"جرام","cost":0.0,"category":"بهارات وتوابل"},{"name":"حبة سودا","sku":"sk-0148","unit":"جرام","cost":0.0,"category":"بهارات وتوابل"},{"name":"جوز الطيب","sku":"sk-0149","unit":"جرام","cost":0.0,"category":"بهارات وتوابل"},{"name":"بهارات الكبده","sku":"sk-0150","unit":"جرام","cost":0.02975,"category":"بهارات وتوابل"},{"name":"بذور الكمون","sku":"sk-0151","unit":"جرام","cost":0.016,"category":"بهارات وتوابل"},{"name":"اعواد القرفه","sku":"sk-0152","unit":"جرام","cost":0.02173,"category":"بهارات وتوابل"},{"name":"حمص حب","sku":"sk-0153","unit":"جرام","cost":0.003467,"category":"خضار وفواكة"},{"name":"بيكج بودر فوستر كلاركس 225 جرام","sku":"sk-0154","unit":"جرام","cost":0.0,"category":"بهارات وتوابل"},{"name":"عجين الملوح","sku":"sk-0171","unit":"جرام","cost":0.0,"category":"مخبوزات"},{"name":"دجاج","sku":"sk-0174","unit":"جرام","cost":0.0,"category":"دجاج"},{"name":"سمبوسه جبنه","sku":"sk-0175","unit":"حبه","cost":0.0,"category":"مخبوزات"},{"name":"سمبوسه لحم","sku":"sk-0176","unit":"حبه","cost":0.0,"category":"مخبوزات"},{"name":"صحون مكرويف 35 انز مقسم 6","sku":"sk-0177","unit":"حبه","cost":1.529133,"category":"مواد البلاستيك والتغليف"},{"name":"زعفران","sku":"sk-0178","unit":"جرام","cost":17.3,"category":"بهارات وتوابل"},{"name":"ارز الديوان","sku":"sk-0179","unit":"جرام","cost":0.0048,"category":"ارز"},{"name":"ارز الوليمه","sku":"sk-0180","unit":"جرام","cost":0.0,"category":"ارز"},{"name":"ارز ابو بنت","sku":"sk-0181","unit":"جرام","cost":0.005425,"category":"ارز"},{"name":"فول مجروش","sku":"sk-0183","unit":"جرام","cost":0.003333,"category":"خضار وفواكة"},{"name":"فول كامل","sku":"sk-0184","unit":"جرام","cost":0.005333,"category":"خضار وفواكة"},{"name":"علب دائريه للمعصوب مقاس25","sku":"sk-0185","unit":"حبه","cost":0.6,"category":"مواد البلاستيك والتغليف"},{"name":"شطة رناء","sku":"sk-0186","unit":"4","cost":0.003417,"category":"صوصات وصلصات"},{"name":"حليب بودر","sku":"sk-0187","unit":"جرام","cost":0.0,"category":"مشتقات اجبان وحليب"},{"name":"صلصة رناء","sku":"sk-0188","unit":"جرام","cost":0.017269,"category":"صوصات وصلصات"},{"name":"سمن فارم","sku":"sk-0189","unit":"جرام","cost":0.046803,"category":"زيوت"},{"name":"مربى توت","sku":"sk-0190","unit":"جرام","cost":0.01026,"category":"مواد غذائية"},{"name":"دجاج اليوم","sku":"sk-0191","unit":"جرام","cost":0.015,"category":"دجاج"},{"name":"اجي نموتو","sku":"sk-0192","unit":"جرام","cost":0.022026,"category":"بهارات وتوابل"},{"name":"بيبسي طويل 245مل","sku":"sk-0193","unit":"حبة","cost":1.507333,"category":"مشروبات"},{"name":"قصدير 150*30","sku":"sk-0194","unit":"حبة","cost":6.166667,"category":"مواد البلاستيك والتغليف"},{"name":"طقم ملاعق 1*5 اسود","sku":"sk-0195","unit":"حبة","cost":0.22,"category":"مواد البلاستيك والتغليف"},{"name":"غطاء كاسات اسود","sku":"sk-0196","unit":"حبة","cost":0.075,"category":"مواد البلاستيك والتغليف"},{"name":"ملون زعفران","sku":"sk-0197","unit":"جرام","cost":0.02065,"category":"بهارات وتوابل"},{"name":"ماء ورد 270مل","sku":"sk-0198","unit":"مليلتر","cost":0.014969,"category":"مشروبات"},{"name":"طماطم مقشرة الطائي 400 ج","sku":"sk-0199","unit":"جرام","cost":0.006146,"category":"مواد غذائية"},{"name":"ورق غار هندي","sku":"sk-0200","unit":"جرام","cost":0.001,"category":"بهارات وتوابل"},{"name":"ليمون ناشف مصري","sku":"sk-0201","unit":"جرام","cost":0.013043,"category":"بهارات وتوابل"},{"name":"فلفل عدني","sku":"sk-0202","unit":"جرام","cost":0.024349,"category":"خضار وفواكة"},{"name":"كاري مدراس","sku":"sk-0203","unit":"جرام","cost":0.034782,"category":"بهارات وتوابل"},{"name":"فصوليا يمني","sku":"sk-0204","unit":"جرام","cost":0.010434,"category":"خضار وفواكة"},{"name":"باميه","sku":"sk-0205","unit":"جرام","cost":0.012204,"category":"خضار وفواكة"},{"name":"بهارات السبعه","sku":"sk-0206","unit":"جرام","cost":0.041667,"category":"بهارات وتوابل"},{"name":"كاري مهران","sku":"sk-0207","unit":"جرام","cost":0.02565,"category":"بهارات وتوابل"},{"name":"تمر تنكه","sku":"sk-0208","unit":"جرام","cost":0.006522,"category":"مواد غذائية"},{"name":"ملاعق مغلفه","sku":"sk-0209","unit":"شده","cost":3.99425,"category":"مواد البلاستيك والتغليف"},{"name":"بابريكا حلوه","sku":"sk-0210","unit":"جرام","cost":0.04,"category":"بهارات وتوابل"},{"name":"ملوخيه","sku":"sk-0211","unit":"جرام","cost":0.0,"category":"خضار وفواكة"}]}};
 
 /* ── STATE ────────────────────────────────────────────────────── */
-let brand = 'ti', nav = 'costing', cf = 'all', cur = null;
+let brand = 'ti', nav = 'costing', cf = 'all', cur = null, role = 'accountant';
+const FC_TARGET = 35;
+let dashFilter = {fc:'all'};
+
+function setRole(r) {
+  role = r;
+  document.body.classList.remove('role-ops', 'role-kitchen');
+  if (r !== 'accountant') document.body.classList.add('role-' + r);
+  document.querySelectorAll('.rbtn').forEach(function(b) { b.classList.remove('on'); });
+  document.getElementById('rbtn-' + r).classList.add('on');
+}
 
 function lk(k) { return '3in_' + brand + '_' + k; }
 function gR()  { return JSON.parse(localStorage.getItem(lk('r')) || '{}'); }
 function sR(v) { localStorage.setItem(lk('r'), JSON.stringify(v)); }
+function gPH(b){ return JSON.parse(localStorage.getItem('3in_' + b + '_ph') || '{}'); }
+function sPH(b,v){ localStorage.setItem('3in_' + b + '_ph', JSON.stringify(v)); }
+function recordPH(b, sku, name, oldCost, newCost) {
+  if (oldCost === newCost) return;
+  var ph = gPH(b);
+  if (!ph[sku]) ph[sku] = [];
+  ph[sku].unshift({price: newCost, prev: oldCost, name: name, date: new Date().toLocaleDateString('ar-SA')});
+  if (ph[sku].length > 10) ph[sku] = ph[sku].slice(0, 10);
+  sPH(b, ph);
+}
+function showPH(sku, name) {
+  var ph = gPH(brand);
+  var hist = ph[sku] || [];
+  var body = document.getElementById('ph-pop-body');
+  document.getElementById('ph-pop-title').textContent = name;
+  if (!hist.length) {
+    body.innerHTML = '<p style="color:var(--smoke);text-align:center;padding:1rem">لا يوجد سجل أسعار بعد</p>';
+  } else {
+    body.innerHTML = '<table style="width:100%;border-collapse:collapse">' +
+      '<thead><tr><th style="text-align:right;padding:4px 8px;font-size:10px;color:var(--dust);border-bottom:1px solid var(--fog)">التاريخ</th>' +
+      '<th style="text-align:center;padding:4px 8px;font-size:10px;color:var(--dust);border-bottom:1px solid var(--fog)">السعر الجديد</th>' +
+      '<th style="text-align:center;padding:4px 8px;font-size:10px;color:var(--dust);border-bottom:1px solid var(--fog)">السابق</th></tr></thead><tbody>' +
+      hist.slice(0, 5).map(function(h) {
+        var diff = h.price - h.prev;
+        var col = diff > 0 ? 'var(--hot)' : diff < 0 ? 'var(--ok)' : 'var(--dust)';
+        var arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '─';
+        return '<tr style="border-bottom:1px solid var(--fog)">' +
+          '<td style="padding:5px 8px;font-size:11px;color:var(--dust)">' + h.date + '</td>' +
+          '<td style="padding:5px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:12px;text-align:center">' + h.price.toFixed(4) + '</td>' +
+          '<td style="padding:5px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;text-align:center;color:' + col + '">' + arrow + ' ' + (h.prev || 0).toFixed(4) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  document.getElementById('ph-pop').classList.remove('hidden');
+}
 function gP()  { return JSON.parse(localStorage.getItem(lk('p')) || '[]'); }
 function sP(v) { localStorage.setItem(lk('p'), JSON.stringify(v)); }
 function gI()  { return JSON.parse(localStorage.getItem(lk('i')) || '[]'); }
@@ -453,8 +659,11 @@ function allItems() { return [...aP(), ...aSP()]; }
 // All components for recipe ingredient search = ingredients + semi products
 function allComponents() {
   var ings = aI();
+  var R_now = gR();
   var semis = aSP().map(function(s) {
-    return {name:s.name, sku:s.sku, unit:'حصة', cost:0, category:'⚙ وسيط', is_semi:true};
+    var savedUnit = s.unit || 'حصة';
+    var savedCost = (R_now[s.sku] && R_now[s.sku].totalCost) ? R_now[s.sku].totalCost : 0;
+    return {name:s.name, sku:s.sku, unit:savedUnit, cost:savedCost, category:'⚙ وسيط', is_semi:true};
   });
   return [...ings, ...semis];
 }
@@ -476,7 +685,12 @@ function toast(m, d) {
 function sd(s) { document.getElementById('sync-dot').className = 'sync-dot ' + s; }
 function badge() {
   var r = gR();
-  document.getElementById('cbadge').textContent = Object.keys(r).length + ' وصفة';
+  var vals = Object.values(r);
+  document.getElementById('cbadge').textContent = vals.length + ' وصفة';
+  var over = vals.filter(function(x) { return x.foodCostPct > FC_TARGET; }).length;
+  var wb = document.getElementById('fc-warn-badge');
+  if (over > 0) { wb.textContent = '⚠ ' + over + ' فوق 35%'; wb.style.display = ''; }
+  else { wb.style.display = 'none'; }
 }
 function mkPill(cls, text) {
   return '<span class="' + cls + '">' + text + '</span>';
@@ -492,6 +706,7 @@ function setBrand(b) {
   if (nav === 'costing') { renderCsb(); renderCMain(); }
   else if (nav === 'products') renderPT();
   else if (nav === 'ingredients') renderIT();
+  else if (nav === 'dashboard') renderDash();
 }
 
 function setNav(n) {
@@ -504,6 +719,7 @@ function setNav(n) {
   else if (n === 'products') renderPT();
   else if (n === 'ingredients') renderIT();
   else if (n === 'tests') initTestGrid();
+  else if (n === 'dashboard') renderDash();
 }
 
 function setCF(c, el) {
@@ -569,9 +785,10 @@ function renderCsb() {
       var svCls  = R[s.sku] ? ' sv' : '';
       var svDot  = R[s.sku] ? '<span class="sv-dot">✓</span>' : '';
       var newBadge = s._custom ? mkPill('new-pill', 'جديد') : '';
+      var fcWarn = (R[s.sku] && R[s.sku].foodCostPct > FC_TARGET) ? '<span style="font-size:10px;color:var(--hot);font-weight:600">⚠ ' + R[s.sku].foodCostPct + '%</span>' : '';
       html += '<div class="pi semi-item' + selCls + svCls + '" onclick="pick(\'' + s.sku + '\')">';
       html += '<div class="pn">' + mkPill('semi-pill', 'Batch') + ' ' + s.name + newBadge + '</div>';
-      html += '<div class="pmeta"><span class="psku">' + s.sku + '</span>' + svDot + '</div>';
+      html += '<div class="pmeta"><span class="psku">' + s.sku + '</span>' + svDot + fcWarn + '</div>';
       html += '</div>';
     }
     if (items.length > 0) {
@@ -589,9 +806,10 @@ function renderCsb() {
       var appBadge = ap.on ? mkPill('app-pill', 'APP ' + (ap.app_price ? ap.app_price.toFixed(0) : '') + ' ﷼') : '';
       var svDot2   = R[p.sku] ? '<span class="sv-dot">✓</span>' : '';
       var newBadge2 = p._custom ? mkPill('new-pill', 'جديد') : '';
+      var fcWarn2 = (R[p.sku] && R[p.sku].foodCostPct > FC_TARGET) ? '<span style="font-size:10px;color:var(--hot);font-weight:600">⚠ ' + R[p.sku].foodCostPct + '%</span>' : '';
       html += '<div class="pi' + selCls2 + svCls2 + '" onclick="pick(\'' + p.sku + '\')">';
       html += '<div class="pn">' + p.name + newBadge2 + '</div>';
-      html += '<div class="pmeta"><span class="psku">' + p.sku + '</span><span class="pprice">' + p.price.toFixed(0) + ' ﷼</span>' + appBadge + svDot2 + '</div>';
+      html += '<div class="pmeta"><span class="psku">' + p.sku + '</span><span class="pprice">' + p.price.toFixed(0) + ' ﷼</span>' + appBadge + svDot2 + fcWarn2 + '</div>';
       html += '</div>';
     }
   } else if (semis.length === 0) {
@@ -611,12 +829,18 @@ function pick(sku) {
 /* ── COST CALCULATIONS ────────────────────────────────────────── */
 function getRows() {
   return Array.from(document.querySelectorAll('#ing-tbody tr')).map(function(tr) {
+    // unit: could be hidden input (locked) or select (editable)
+    var uEl = tr.querySelector('.usel');
+    var unit = uEl ? uEl.value : '';
+    var yEl = tr.querySelector('.yinp');
+    var yieldPct = yEl ? (parseFloat(yEl.value) || 100) : 100;
     return {
       ingName:  tr.querySelector('.iinp') ? tr.querySelector('.iinp').value : '',
       ingSku:   tr.dataset.sku || '',
       qty:      parseFloat(tr.querySelector('.qinp') ? tr.querySelector('.qinp').value : 0) || 0,
-      unit:     tr.querySelector('.usel') ? tr.querySelector('.usel').value : '',
-      unitCost: parseFloat(tr.querySelector('.upinp') ? tr.querySelector('.upinp').value : 0) || 0
+      unit:     unit,
+      unitCost: parseFloat(tr.querySelector('.upinp') ? tr.querySelector('.upinp').value : 0) || 0,
+      yieldPct: yieldPct
     };
   });
 }
@@ -626,7 +850,7 @@ function calc() {
   var sp  = parseFloat(document.getElementById('si') ? document.getElementById('si').value : 0) || 0;
   var aiEl = document.getElementById('ai');
   var ap  = aiEl ? (parseFloat(aiEl.value) || 0) : 0;
-  var tot = getRows().reduce(function(s, r) { return s + r.qty * r.unitCost; }, 0);
+  var tot = getRows().reduce(function(s, r) { return s + (r.qty / (r.yieldPct / 100)) * r.unitCost; }, 0);
   var ps  = tot / yi;
   return {
     ps:         ps,
@@ -681,7 +905,7 @@ function upd() {
 
   document.querySelectorAll('.ccell').forEach(function(td, idx) {
     var rows = getRows();
-    if (rows[idx]) td.textContent = (rows[idx].qty * rows[idx].unitCost).toFixed(3);
+    if (rows[idx]) td.textContent = ((rows[idx].qty / (rows[idx].yieldPct / 100)) * rows[idx].unitCost).toFixed(3);
   });
 }
 
@@ -690,18 +914,34 @@ function addCostRow(d) {
   var tb = document.getElementById('ing-tbody');
   if (!tb) return;
   var tr = document.createElement('tr');
-  tr.dataset.sku = d.sku || d.ingSku || '';
-  var units = ['جرام','كيلو','ميليلتر','لتر','حبة','قطعة','زجاجة','مليلتر','مل','علبة','g','ml','pcs'];
-  var unitOpts = units.map(function(u) {
-    return '<option' + (u === (d.unit || 'جرام') ? ' selected' : '') + '>' + u + '</option>';
-  }).join('');
-  var costVal = d.qty && (d.unitCost || d.cost) ? (d.qty * (d.unitCost || d.cost)).toFixed(3) : '0.000';
+  var sku = d.sku || d.ingSku || '';
+  tr.dataset.sku = sku;
+  // Check if this is a semi product (unit can be custom)
+  var isSemi = d.is_semi || (sku && aSP().find(function(s){return s.sku===sku;}));
+  var hasUnit = sku && d.unit; // ingredient with known unit → lock it
+  var allUnits = ['جرام','كيلو','ميليلتر','لتر','حبة','قطعة','زجاجة','مليلتر','مل','علبة','كيس','وعاء','صحن','طبق','حصة','g','ml','pcs','kg','L'];
+  var unitCell;
+  if (hasUnit && !isSemi) {
+    // Locked unit — ingredient's own unit, not editable
+    unitCell = '<td style="width:12%;text-align:center">' +
+      '<span class="usel" style="display:inline-block;padding:2px 6px;background:var(--mist);border-radius:4px;font-size:11px;color:var(--ink2);font-weight:500">' + d.unit + '</span>' +
+      '<input type="hidden" class="usel" value="' + d.unit + '"></td>';
+  } else {
+    // Editable unit select — for semi products or empty rows
+    var unitOpts = allUnits.map(function(u) {
+      return '<option' + (u === (d.unit || 'حصة') ? ' selected' : '') + '>' + u + '</option>';
+    }).join('');
+    unitCell = '<td style="width:12%"><select class="usel" onchange="upd()">' + unitOpts + '</select></td>';
+  }
+  var yv = d.yieldPct !== undefined ? d.yieldPct : 100;
+  var costVal = d.qty && (d.unitCost || d.cost) ? ((d.qty / (yv / 100)) * (d.unitCost || d.cost)).toFixed(3) : '0.000';
   tr.innerHTML =
-    '<td style="width:35%"><div class="acw"><input class="iinp" type="text" value="' + (d.name || d.ingName || '') + '" placeholder="المادة..." oninput="acIn(this)" onfocus="acIn(this)" onblur="acHide(this)"><div class="acl"></div></div></td>' +
-    '<td style="width:11%"><input class="qinp" type="number" value="' + (d.qty || '') + '" placeholder="0" min="0" step="0.1" oninput="upd()"></td>' +
-    '<td style="width:12%"><select class="usel" onchange="upd()">' + unitOpts + '</select></td>' +
-    '<td style="width:14%"><input class="upinp" type="number" value="' + (d.unitCost || d.cost || '') + '" placeholder="0.000" min="0" step="0.001" oninput="upd()"></td>' +
-    '<td class="ccell" style="width:13%">' + costVal + '</td>' +
+    '<td style="width:32%"><div class="acw"><input class="iinp" type="text" value="' + (d.name || d.ingName || '') + '" placeholder="المادة..." oninput="acIn(this)" onfocus="acIn(this)" onblur="acHide(this)"><div class="acl"></div></div></td>' +
+    '<td style="width:10%"><input class="qinp" type="number" value="' + (d.qty || '') + '" placeholder="0" min="0" step="0.1" oninput="upd()"></td>' +
+    unitCell +
+    '<td class="yield-col" style="width:8%;text-align:center"><input class="yinp" type="number" value="' + yv + '" min="1" max="100" step="1" oninput="upd()" style="width:42px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:11px;background:var(--paper);border:1px solid var(--fog);border-radius:4px;padding:3px 4px;color:var(--ink);outline:none"></td>' +
+    '<td class="price-col" style="width:13%"><input class="upinp" type="number" value="' + (d.unitCost || d.cost || '') + '" placeholder="0.000" min="0" step="0.001" oninput="upd()"></td>' +
+    '<td class="ccell price-col" style="width:12%">' + costVal + '</td>' +
     '<td style="width:5%;text-align:center"><button class="drow" onclick="this.closest(\'tr\').remove();upd()">✕</button></td>';
   tb.appendChild(tr);
   upd();
@@ -726,16 +966,43 @@ function acPick(e, sku) {
   var x = allComponents().find(function(i) { return i.sku === sku; });
   if (!x) return;
   // If semi product, get its calculated cost from saved recipe
+  var batchWarn = false;
   if (x.is_semi) {
     var R = gR();
-    if (R[sku] && R[sku].totalCost) { x = Object.assign({}, x, {cost: R[sku].totalCost}); }
+    if (R[sku] && R[sku].totalCost) {
+      x = Object.assign({}, x, {cost: R[sku].totalCost});
+    } else {
+      batchWarn = true;
+    }
   }
   var tr = e.target.closest('.acl').previousElementSibling.closest('tr');
   tr.dataset.sku = x.sku;
   tr.querySelector('.iinp').value = x.name;
-  tr.querySelector('.usel').value = x.unit;
   tr.querySelector('.upinp').value = x.cost;
   tr.querySelector('.acl').classList.remove('open');
+  // Replace unit cell with locked unit (for ingredients) or editable (for semi)
+  var isSemi = x.is_semi;
+  var tdUnit = tr.children[2]; // 3rd cell = unit
+  if (tdUnit) {
+    if (!isSemi && x.unit) {
+      // Locked
+      tdUnit.style.textAlign = 'center';
+      tdUnit.innerHTML = '<span class="usel" style="display:inline-block;padding:2px 6px;background:var(--mist);border-radius:4px;font-size:11px;color:var(--ink2);font-weight:500">' + x.unit + '</span>' +
+        '<input type="hidden" class="usel" value="' + x.unit + '">';
+    } else {
+      // Editable select for semi
+      var allUnits = ['جرام','كيلو','ميليلتر','لتر','حبة','قطعة','زجاجة','مليلتر','مل','علبة','كيس','وعاء','صحن','طبق','حصة','g','ml','pcs','kg','L'];
+      var opts = allUnits.map(function(u){ return '<option' + (u==='حصة'?' selected':'') + '>' + u + '</option>'; }).join('');
+      tdUnit.style.textAlign = '';
+      tdUnit.innerHTML = '<select class="usel" onchange="upd()">' + opts + '</select>';
+    }
+  }
+  if (batchWarn) {
+    tr.querySelector('.upinp').style.background = 'var(--warn-bg)';
+    tr.querySelector('.upinp').style.border = '1px solid var(--warn)';
+    tr.querySelector('.upinp').title = '⚠ هذا المنتج الوسيط ليس له وصفة محفوظة — التكلفة = 0';
+    toast('⚠ ' + x.name + ' — لا توجد وصفة محفوظة لهذا المنتج الوسيط');
+  }
   tr.querySelector('.qinp').focus();
   upd();
 }
@@ -783,8 +1050,8 @@ function renderCMain() {
     '<div class="pb-diff" id="apdiff"></div></div>' : '';
 
   var mc4 = hasApp ?
-    '<div class="mc" style="border-color:rgba(107,63,160,.2);background:var(--app-bg)"><div class="mc-lbl" style="color:var(--app)">هامش APP</div><div class="mc-val" id="am" style="color:var(--app)">—</div></div>' :
-    '<div class="mc"><div class="mc-lbl">سعر مقترح 32%</div><div class="mc-val" id="ms" style="color:var(--info)">—</div></div>';
+    '<div class="mc price-mc" style="border-color:rgba(107,63,160,.2);background:var(--app-bg)"><div class="mc-lbl" style="color:var(--app)">هامش APP</div><div class="mc-val" id="am" style="color:var(--app)">—</div></div>' :
+    '<div class="mc price-mc"><div class="mc-lbl">سعر مقترح 32%</div><div class="mc-val" id="ms" style="color:var(--info)">—</div></div>';
 
   var savedHTML = renderSavedHTML();
 
@@ -802,8 +1069,8 @@ function renderCMain() {
     '</div>' +
     '<div class="metrics">' +
       '<div class="mc"><div class="mc-lbl">تكلفة/حصة</div><div class="mc-val" id="mc">0.00</div><div class="mc-sub">ريال</div></div>' +
-      '<div class="mc"><div class="mc-lbl">Food Cost%</div><div class="mc-val" id="mfc">—</div></div>' +
-      '<div class="mc"><div class="mc-lbl">هامش Dine</div><div class="mc-val" id="mm">—</div></div>' +
+      '<div class="mc price-mc"><div class="mc-lbl">Food Cost%</div><div class="mc-val" id="mfc">—</div></div>' +
+      '<div class="mc price-mc"><div class="mc-lbl">هامش Dine</div><div class="mc-val" id="mm">—</div></div>' +
       mc4 +
     '</div>' +
     '<div class="fcw">' +
@@ -814,9 +1081,10 @@ function renderCMain() {
     '<div class="sec-lbl"><span>المكونات</span><span style="font-weight:400;color:var(--smoke)">' + aI().length + ' مادة</span></div>' +
     '<div class="iw">' +
       '<table><thead><tr>' +
-        '<th style="width:35%">المادة</th><th style="width:11%;text-align:center">الكمية</th>' +
-        '<th style="width:12%;text-align:center">الوحدة</th><th style="width:14%;text-align:center">سعر الوحدة ﷼</th>' +
-        '<th style="width:13%;text-align:center">التكلفة ﷼</th><th style="width:5%"></th>' +
+        '<th style="width:32%">المادة</th><th style="width:10%;text-align:center">الكمية</th>' +
+        '<th style="width:10%;text-align:center">الوحدة</th><th class="yield-col" style="width:8%;text-align:center">Yield%</th>' +
+        '<th class="price-col" style="width:13%;text-align:center">سعر الوحدة ﷼</th>' +
+        '<th class="price-col" style="width:12%;text-align:center">التكلفة ﷼</th><th style="width:5%"></th>' +
       '</tr></thead><tbody id="ing-tbody"></tbody></table>' +
       '<button class="add-btn" onclick="addCostRow()">+ مكوّن</button>' +
     '</div>' +
@@ -1012,7 +1280,7 @@ function renderIT() {
       '<td>' + mkPill('cat-pill', i.category||'—') + '</td>' +
       '<td style="text-align:center;font-size:12px;color:var(--dust)">' + i.unit + '</td>' +
       '<td class="td-p" style="text-align:center">' + i.cost + '</td>' +
-      '<td><div class="td-act"><button class="ibtn ed" onclick="editI(\'' + i.sku + '\')" title="تعديل">✏️</button>' + delBtn + '</div></td></tr>';
+      '<td><div class="td-act"><button class="ibtn" onclick="showPH(\'' + i.sku + '\',\'' + i.name.replace(/'/g,"\\'") + '\')" title="سجل الأسعار">📋</button><button class="ibtn ed" onclick="editI(\'' + i.sku + '\')" title="تعديل">✏️</button>' + delBtn + '</div></td></tr>';
   }).join('');
   document.getElementById('i-tbl').innerHTML =
     '<table><thead><tr><th style="width:30%">الاسم</th><th style="width:12%">SKU</th><th style="width:14%">الفئة</th><th style="width:12%;text-align:center">الوحدة</th><th style="width:14%;text-align:center">سعر الوحدة ﷼</th><th style="width:18%;text-align:center">إجراءات</th></tr></thead><tbody>' +
@@ -1053,8 +1321,8 @@ function submitI() {
   var CI = gI();
   if (esku) {
     var baseI = BRANDS[brand].ingredients.find(function(i) { return i.sku === sku; });
-    if (baseI) { var bIdx = BRANDS[brand].ingredients.findIndex(function(i) { return i.sku === sku; }); if (bIdx > -1) BRANDS[brand].ingredients[bIdx] = Object.assign({}, BRANDS[brand].ingredients[bIdx], {name:name,category:cat,unit:unit,cost:cost}); }
-    else { var cIdx = CI.findIndex(function(i) { return i.sku === esku; }); if (cIdx > -1) CI[cIdx] = Object.assign({}, CI[cIdx], {name:name,sku:sku,category:cat,unit:unit,cost:cost}); sI(CI); }
+    if (baseI) { var bIdx = BRANDS[brand].ingredients.findIndex(function(i) { return i.sku === sku; }); if (bIdx > -1) { recordPH(brand, sku, name, BRANDS[brand].ingredients[bIdx].cost, cost); BRANDS[brand].ingredients[bIdx] = Object.assign({}, BRANDS[brand].ingredients[bIdx], {name:name,category:cat,unit:unit,cost:cost}); } }
+    else { var cIdx = CI.findIndex(function(i) { return i.sku === esku; }); if (cIdx > -1) { recordPH(brand, sku, name, CI[cIdx].cost, cost); CI[cIdx] = Object.assign({}, CI[cIdx], {name:name,sku:sku,category:cat,unit:unit,cost:cost}); } sI(CI); }
     syncAction('saveIngredient', {brand:brand, ingredient:{sku:sku,name:name,category:cat,unit:unit,cost:cost}});
     toast('✓ تم التعديل');
   } else {
@@ -1130,19 +1398,52 @@ function buildWB() {
   var saved = Object.values(gR());
   if (!saved.length) return null;
   var wb = XLSX.utils.book_new();
-  var s1 = [['ملخص الوصفات','','','','','',''],
-    ['براند:', brand === 'ti' ? 'Three In' : 'باب البلد', 'تاريخ:', new Date().toLocaleString('ar-SA'),'','',''],
-    [], ['المنتج','SKU','Dine In','APP','FC%','هامش Dine','هامش APP','الحصص','نوع']];
-  saved.forEach(function(r) { s1.push([r.productName,r.sku,r.sellPrice,r.appPrice||'—',r.foodCostPct+'%',r.margin,r.margin_app!=null?r.margin_app:'—',r.yield,r.isSemi?'Batch':'Meal']); });
-  var ws1 = XLSX.utils.aoa_to_sheet(s1); ws1['!cols'] = [28,12,10,10,10,10,10,8,8].map(function(w){return{wch:w};});
-  XLSX.utils.book_append_sheet(wb, ws1, 'ملخص');
-  var s2 = [['تفصيل المكونات','','','','','',''],[],'', ['المنتج','SKU','المكوّن','Ing SKU','الكمية','الوحدة','سعر الوحدة','التكلفة']];
+
+  // Sheet 1: Summary — added هامش%, ⚠ فوق الهدف
+  var s1 = [['ملخص الوصفات','','','','','','','','','',''],
+    ['براند:', brand === 'ti' ? 'Three In' : 'باب البلد', 'تاريخ:', new Date().toLocaleString('ar-SA'),'الهدف:',FC_TARGET+'%','','','','',''],
+    [], ['المنتج','SKU','Dine In','APP','FC%','هامش Dine ﷼','هامش Dine %','هامش APP ﷼','الحصص','نوع','⚠ فوق الهدف']];
   saved.forEach(function(r) {
-    r.ingredients.filter(function(i){return i.ingName;}).forEach(function(i) { s2.push([r.productName,r.sku,i.ingName,i.ingSku,i.qty,i.unit,i.unitCost,+(i.qty*i.unitCost).toFixed(4)]); });
-    s2.push(['','','— إجمالي —','','','','',r.totalCost]); s2.push([]);
+    var marginPct = r.sellPrice > 0 ? +((r.margin / r.sellPrice) * 100).toFixed(1) : '—';
+    var overTarget = r.foodCostPct > FC_TARGET ? 'نعم ⚠' : 'لا';
+    s1.push([r.productName, r.sku, r.sellPrice, r.appPrice||'—', r.foodCostPct+'%',
+      r.margin, marginPct, r.margin_app!=null?r.margin_app:'—',
+      r.yield, r.isSemi?'Batch':'Meal', overTarget]);
   });
-  var ws2 = XLSX.utils.aoa_to_sheet(s2); ws2['!cols'] = [26,12,26,12,8,10,12,14].map(function(w){return{wch:w};});
+  var ws1 = XLSX.utils.aoa_to_sheet(s1);
+  ws1['!cols'] = [28,12,10,10,10,12,12,12,8,8,12].map(function(w){return{wch:w};});
+  XLSX.utils.book_append_sheet(wb, ws1, 'ملخص');
+
+  // Sheet 2: Ingredients detail — added Yield%
+  var s2 = [['تفصيل المكونات','','','','','','','',''],[],'',
+    ['المنتج','SKU','المكوّن','Ing SKU','الكمية','الوحدة','Yield%','سعر الوحدة','التكلفة']];
+  saved.forEach(function(r) {
+    r.ingredients.filter(function(i){return i.ingName;}).forEach(function(i) {
+      var yp = i.yieldPct || 100;
+      var cost = +(i.qty / (yp/100) * i.unitCost).toFixed(4);
+      s2.push([r.productName, r.sku, i.ingName, i.ingSku, i.qty, i.unit, yp+'%', i.unitCost, cost]);
+    });
+    s2.push(['','','— إجمالي —','','','','','', r.totalCost]); s2.push([]);
+  });
+  var ws2 = XLSX.utils.aoa_to_sheet(s2);
+  ws2['!cols'] = [26,12,26,12,8,10,8,12,14].map(function(w){return{wch:w};});
   XLSX.utils.book_append_sheet(wb, ws2, 'مكونات');
+
+  // Sheet 3: Price history
+  var s3 = [['تاريخ تغييرات الأسعار','','','',''],
+    [], ['المادة الخام','البراند','السعر الجديد','السعر السابق','التاريخ']];
+  ['ti','bb'].forEach(function(b) {
+    var ph = gPH(b);
+    Object.keys(ph).forEach(function(sku) {
+      ph[sku].forEach(function(h) {
+        s3.push([h.name||sku, b==='ti'?'Three In':'باب البلد', h.price, h.prev||0, h.date]);
+      });
+    });
+  });
+  var ws3 = XLSX.utils.aoa_to_sheet(s3);
+  ws3['!cols'] = [30,14,14,14,14].map(function(w){return{wch:w};});
+  XLSX.utils.book_append_sheet(wb, ws3, 'تاريخ الأسعار');
+
   return wb;
 }
 
@@ -1185,11 +1486,521 @@ regT('data-bb','بيانات BB','95 منتج + 171 مادة + 18 وسيط',asyn
 regT('gs-save','Sheets — حفظ','إرسال وصفة للـ Sheets',async function(){if(location.protocol==='file:'){tlog('  ○ تخطي — file:// protocol','warn');return;}var sk='test-gs-sv-001';var r=await fetch(GS,{method:'POST',body:JSON.stringify({action:'saveRecipe',brand:'ti',recipe:{sku:sk,productName:'GS Test',brand:'ti',sellPrice:30,appPrice:33,yield:1,ingredients:[],totalCost:1.5,foodCostPct:5,margin:28.5,margin_app:31.5,savedAt:''}}),headers:{'Content-Type':'text/plain'}}).then(function(r){return r.json();});assert(r.status==='ok','استجابة: '+JSON.stringify(r));await fetch(GS,{method:'POST',body:JSON.stringify({action:'deleteRecipe',brand:'ti',sku:sk}),headers:{'Content-Type':'text/plain'}});tlog('  ✓ Sheets OK','ok');});
 regT('gs-load','Sheets — تحميل','قراءة البيانات',async function(){if(location.protocol==='file:'){tlog('  ○ تخطي — file:// protocol','warn');return;}var r=await fetch(GS).then(function(r){return r.json();});assert(Array.isArray(r.recipes),'recipes');assert(Array.isArray(r.products),'products');assert(Array.isArray(r.ingredients),'ingredients');tlog('  ✓ وصفات: '+r.recipes.length+' | منتجات: '+r.products.length,'ok');});
 
+/* ── PRICE UPLOAD ────────────────────────────────────────────── */
+var _pendingPriceChanges = null;
+
+function handlePriceUpload(input) {
+  var file = input.files[0];
+  if (!file) return;
+  toast('⏳ جاري قراءة الملف...');
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb   = XLSX.read(data, {type:'array'});
+      var ingChanges = [];  // [{b, sku, name, oldPrice, newPrice}]
+      var prodChanges = []; // [{b, sku, oldPrice, newPrice, appPrice}]
+
+      wb.SheetNames.forEach(function(sheetName) {
+        var ws   = wb.Sheets[sheetName];
+        var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        if (!rows || rows.length < 4) return;
+        var isTI   = sheetName.includes('TI') || sheetName.includes('Three');
+        var isBB   = sheetName.includes('BB') || sheetName.includes('باب');
+        var isIngs = sheetName.includes('مواد') || sheetName.includes('خام');
+        var isProds= sheetName.includes('منتج');
+        if (!isTI && !isBB) return;
+        var b = isTI ? 'ti' : 'bb';
+        var headerRow = -1, skuCol = -1, newPriceCol = -1, appPriceCol = -1;
+        for (var r = 0; r < Math.min(rows.length, 5); r++) {
+          for (var c = 0; c < rows[r].length; c++) {
+            var cell = String(rows[r][c] || '');
+            if (cell === 'SKU') { headerRow = r; skuCol = c; }
+            if (cell.includes('الجديد') && cell.includes('APP')) appPriceCol = c;
+            else if (cell.includes('الجديد')) newPriceCol = c;
+          }
+          if (headerRow > -1) break;
+        }
+        if (headerRow < 0 || skuCol < 0 || newPriceCol < 0) return;
+        for (var ri = headerRow + 1; ri < rows.length; ri++) {
+          var row = rows[ri];
+          var sku = String(row[skuCol] || '').trim();
+          var newPrice = row[newPriceCol];
+          if (!sku || newPrice === '' || newPrice === null || newPrice === undefined) continue;
+          newPrice = parseFloat(newPrice);
+          if (isNaN(newPrice) || newPrice < 0) continue;
+          if (isIngs) {
+            var ing = BRANDS[b].ingredients.find(function(i){return i.sku===sku;});
+            var CI2 = JSON.parse(localStorage.getItem('3in_'+b+'_i')||'[]');
+            var ci2 = CI2.find(function(i){return i.sku===sku;});
+            var src = ing || ci2;
+            if (src && src.cost !== newPrice) {
+              ingChanges.push({b:b, sku:sku, name:src.name, oldPrice:src.cost, newPrice:newPrice});
+            }
+          } else if (isProds) {
+            var prod = BRANDS[b].products.find(function(p){return p.sku===sku;});
+            if (prod && prod.price !== newPrice) {
+              var appP2 = (appPriceCol > -1 && row[appPriceCol] !== '') ? parseFloat(row[appPriceCol]) : null;
+              prodChanges.push({b:b, sku:sku, oldPrice:prod.price, newPrice:newPrice, appPrice:(!isNaN(appP2) && appP2 > 0) ? appP2 : null});
+            }
+          }
+        }
+      });
+
+      if (!ingChanges.length && !prodChanges.length) {
+        toast('⚠ لا توجد تغييرات في الأسعار'); input.value = ''; return;
+      }
+
+      // Calculate recipe impact
+      var R = {};
+      ['ti','bb'].forEach(function(b2) {
+        var saved = JSON.parse(localStorage.getItem('3in_'+b2+'_r') || '{}');
+        Object.values(saved).forEach(function(rec) { R[rec.sku + '|' + b2] = rec; });
+      });
+      var impactedRecipes = [];
+      var priceMap = {};
+      ingChanges.forEach(function(ch) { priceMap[ch.b + '|' + ch.sku] = ch.newPrice; });
+
+      Object.values(R).forEach(function(rec) {
+        if (!rec.ingredients || !rec.ingredients.length) return;
+        var oldCost = rec.totalCost || 0;
+        var newCost = rec.ingredients.reduce(function(s, ing) {
+          var key = rec.brand + '|' + ing.ingSku;
+          var uCost = priceMap[key] !== undefined ? priceMap[key] : ing.unitCost;
+          var yp = ing.yieldPct || 100;
+          return s + (ing.qty / (yp / 100)) * uCost;
+        }, 0) / (rec.yield || 1);
+        if (Math.abs(newCost - oldCost) > 0.0001) {
+          var sp = rec.sellPrice || 0;
+          impactedRecipes.push({
+            name: rec.productName, sku: rec.sku, brand: rec.brand,
+            oldCost: oldCost, newCost: newCost,
+            oldFC: sp > 0 ? oldCost / sp * 100 : null,
+            newFC: sp > 0 ? newCost / sp * 100 : null
+          });
+        }
+      });
+
+      _pendingPriceChanges = {ingChanges: ingChanges, prodChanges: prodChanges, inputEl: input};
+
+      // Show impact popup
+      var stats = document.getElementById('price-impact-stats');
+      stats.innerHTML = '<b>' + ingChanges.length + '</b> مادة خام · <b>' + prodChanges.length + '</b> منتج · <b style="color:var(--hot)">' + impactedRecipes.length + '</b> وصفة متأثرة';
+
+      var body = document.getElementById('price-impact-body');
+      if (!impactedRecipes.length) {
+        body.innerHTML = '<p style="color:var(--smoke);padding:.5rem">لا توجد وصفات محفوظة متأثرة بهذه التغييرات.</p>';
+      } else {
+        body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
+          '<thead><tr style="background:var(--paper)">' +
+          '<th style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--fog)">الوصفة</th>' +
+          '<th style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--fog)">تكلفة قبل</th>' +
+          '<th style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--fog)">تكلفة بعد</th>' +
+          '<th style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--fog)">FC% قبل</th>' +
+          '<th style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--fog)">FC% بعد</th>' +
+          '</tr></thead><tbody>' +
+          impactedRecipes.map(function(r) {
+            var diff = r.newCost - r.oldCost;
+            var costCol = diff > 0 ? 'var(--hot)' : 'var(--ok)';
+            var fcDiff = r.newFC !== null ? r.newFC - r.oldFC : null;
+            var fcCol = fcDiff > 0 ? 'var(--hot)' : 'var(--ok)';
+            var warn = r.newFC > FC_TARGET ? ' ⚠' : '';
+            return '<tr style="border-bottom:1px solid var(--fog)">' +
+              '<td style="padding:5px 8px">' + r.name + '</td>' +
+              '<td style="text-align:center;font-family:\'IBM Plex Mono\',monospace">' + r.oldCost.toFixed(3) + '</td>' +
+              '<td style="text-align:center;font-family:\'IBM Plex Mono\',monospace;color:' + costCol + '">' + r.newCost.toFixed(3) + '</td>' +
+              '<td style="text-align:center;font-family:\'IBM Plex Mono\',monospace">' + (r.oldFC !== null ? r.oldFC.toFixed(1) + '%' : '—') + '</td>' +
+              '<td style="text-align:center;font-family:\'IBM Plex Mono\',monospace;color:' + fcCol + '">' + (r.newFC !== null ? r.newFC.toFixed(1) + '%' + warn : '—') + '</td>' +
+              '</tr>';
+          }).join('') + '</tbody></table>';
+      }
+      document.getElementById('price-impact-pop').classList.remove('hidden');
+
+    } catch(err) {
+      toast('⚠ خطأ في قراءة الملف: ' + err.message);
+      console.error(err);
+      input.value = '';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function applyPriceChanges() {
+  if (!_pendingPriceChanges) return;
+  var ingChanges  = _pendingPriceChanges.ingChanges;
+  var prodChanges = _pendingPriceChanges.prodChanges;
+  var inputEl     = _pendingPriceChanges.inputEl;
+  var total = 0;
+
+  ingChanges.forEach(function(ch) {
+    var ing = BRANDS[ch.b].ingredients.find(function(i){return i.sku===ch.sku;});
+    if (ing) { recordPH(ch.b, ch.sku, ch.name, ing.cost, ch.newPrice); ing.cost = ch.newPrice; total++; }
+    var CI = JSON.parse(localStorage.getItem('3in_'+ch.b+'_i')||'[]');
+    var ci = CI.find(function(i){return i.sku===ch.sku;});
+    if (ci) { recordPH(ch.b, ch.sku, ch.name, ci.cost, ch.newPrice); ci.cost = ch.newPrice; localStorage.setItem('3in_'+ch.b+'_i', JSON.stringify(CI)); }
+  });
+
+  prodChanges.forEach(function(ch) {
+    var prod = BRANDS[ch.b].products.find(function(p){return p.sku===ch.sku;});
+    if (prod) { prod.price = ch.newPrice; total++; }
+    if (ch.appPrice) {
+      var ao = JSON.parse(localStorage.getItem('3in_'+ch.b+'_ao')||'{}');
+      ao[ch.sku] = ao[ch.sku] || {}; ao[ch.sku].on = true; ao[ch.sku].app_price = ch.appPrice;
+      localStorage.setItem('3in_'+ch.b+'_ao', JSON.stringify(ao)); total++;
+    }
+  });
+
+  _pendingPriceChanges = null;
+  document.getElementById('price-impact-pop').classList.add('hidden');
+  if (inputEl) inputEl.value = '';
+  toast('✓ تم تحديث ' + total + ' سعر');
+  syncAction('bulkPriceUpdate', {brand: brand, count: total});
+  if (nav === 'costing') { renderCsb(); renderCMain(); }
+  else if (nav === 'products') renderPT();
+  else if (nav === 'ingredients') renderIT();
+  badge();
+}
+
+/* ── DASHBOARD ────────────────────────────────────────────────── */
+function setDashFilter(key, val) {
+  dashFilter[key] = val;
+  renderDash();
+}
+
+function renderDash() {
+  var bn = brand === 'ti' ? 'Three In' : 'باب البلد';
+  var saved = JSON.parse(localStorage.getItem('3in_'+brand+'_r') || '{}');
+  var allRecipes = Object.values(saved);
+
+  function fcColor(v){ return v===null?'var(--dust)':v<=25?'var(--ok)':v<=35?'#3a8c3a':v<=40?'var(--warn)':'var(--hot)'; }
+  function fcHex(v){ return v<=25?'#1a7f4b':v<=35?'#3a8c3a':v<=40?'#9a6200':'#c0392b'; }
+
+  // Stats (always all recipes)
+  var withPrice = allRecipes.filter(function(r){return r.sellPrice>0;});
+  var avgFC = withPrice.length ? withPrice.reduce(function(s,r){return s+r.foodCostPct;},0)/withPrice.length : null;
+  var overTarget = allRecipes.filter(function(r){return r.foodCostPct>FC_TARGET && r.sellPrice>0;});
+  var ph = gPH(brand);
+
+  // FC% band counts
+  var bands = {u25:0, ok:0, warn:0, over:0};
+  withPrice.forEach(function(r){
+    if(r.foodCostPct<=25) bands.u25++;
+    else if(r.foodCostPct<=35) bands.ok++;
+    else if(r.foodCostPct<=40) bands.warn++;
+    else bands.over++;
+  });
+
+  // Apply filter
+  var filtered = allRecipes.filter(function(r){
+    var fc = dashFilter.fc;
+    if(fc==='u25') return r.sellPrice>0 && r.foodCostPct<=25;
+    if(fc==='ok') return r.sellPrice>0 && r.foodCostPct>25 && r.foodCostPct<=35;
+    if(fc==='warn') return r.sellPrice>0 && r.foodCostPct>35 && r.foodCostPct<=40;
+    if(fc==='over') return r.sellPrice>0 && r.foodCostPct>40;
+    if(fc==='priced') return r.sellPrice>0;
+    return true;
+  });
+
+  // Top 10
+  var top10 = allRecipes.filter(function(r){return r.totalCost>0;});
+  top10.sort(function(a,b){return b.totalCost-a.totalCost;});
+  top10 = top10.slice(0,10);
+
+  // Price history
+  var recentPH = [];
+  Object.keys(ph).forEach(function(sku){
+    ph[sku].forEach(function(h){ recentPH.push({name:h.name,date:h.date,price:h.price,prev:h.prev}); });
+  });
+  recentPH = recentPH.slice(0,5);
+
+  // Over target (filtered)
+  var overFiltered = filtered.filter(function(r){return r.foodCostPct>FC_TARGET && r.sellPrice>0;});
+  overFiltered.sort(function(a,b){return b.foodCostPct-a.foodCostPct;});
+
+  var card = function(title, content) {
+    return '<div class="fcard" style="margin-bottom:12px"><h3>' + title + '</h3>' + content + '</div>';
+  };
+
+  // ── Filter bar ──
+  var fb = function(label, key, val, col) {
+    var active = dashFilter[key]===val;
+    var base = 'padding:5px 14px;border-radius:20px;border:1px solid ' + (col||'var(--fog)') + ';font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;';
+    var style = active ? base+'background:'+( col||'var(--ink)')+';color:#fff;font-weight:600;' : base+'color:'+(col||'var(--dust)')+';background:transparent;';
+    return '<button onclick="setDashFilter(\'' + key + '\',\'' + val + '\')" style="' + style + '">' + label + '</button>';
+  };
+  var filtersHTML = '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:.75rem 1rem;background:var(--white);border:1px solid var(--fog);border-radius:var(--rl);margin-bottom:12px">' +
+    '<span style="font-size:10px;font-weight:700;color:var(--dust);text-transform:uppercase;letter-spacing:.07em;margin-left:4px">فلتر FC%</span>' +
+    fb('الكل','fc','all','var(--ink)') +
+    fb('≤ 25%','fc','u25','#1a7f4b') +
+    fb('25 – 35%','fc','ok','#3a8c3a') +
+    fb('35 – 40%','fc','warn','#9a6200') +
+    fb('> 40%','fc','over','#c0392b') +
+    fb('لها سعر فقط','fc','priced','#1a5a9a') +
+    '<span style="margin-right:auto;font-size:11px;color:var(--smoke)">' + filtered.length + ' وصفة</span>' +
+    '</div>';
+
+  // ── KPI cards ──
+  var profitMargin = avgFC!==null ? (100-avgFC).toFixed(1)+'%' : '—';
+  var kpiHTML = '<div style="font-size:11px;font-weight:700;color:var(--dust);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">' + bn + '</div>' +
+    '<div class="metrics" style="margin-bottom:12px">' +
+    '<div class="mc"><div class="mc-lbl">متوسط FC%</div><div class="mc-val" style="color:'+fcColor(avgFC)+'">'+(avgFC!==null?avgFC.toFixed(1)+'%':'—')+'</div><div class="mc-sub">'+withPrice.length+' وصفة مسعّرة</div></div>' +
+    '<div class="mc"><div class="mc-lbl">هامش الربح</div><div class="mc-val" style="color:var(--ok)">'+profitMargin+'</div><div class="mc-sub">متوسط</div></div>' +
+    '<div class="mc"><div class="mc-lbl">فوق الهدف '+FC_TARGET+'%</div><div class="mc-val" style="color:'+(overTarget.length?'var(--hot)':'var(--ok)')+'">'+overTarget.length+'</div><div class="mc-sub">وصفة تتجاوز الهدف</div></div>' +
+    '<div class="mc"><div class="mc-lbl">إجمالي الوصفات</div><div class="mc-val">'+allRecipes.length+'</div><div class="mc-sub">محفوظة</div></div>' +
+    '</div>';
+
+  // ── FC% Distribution bar chart (SVG) ──
+  var bData = [
+    {label:'≤ 25%', val:bands.u25, col:'#1a7f4b'},
+    {label:'25-35%', val:bands.ok,  col:'#3a8c3a'},
+    {label:'35-40%', val:bands.warn,col:'#9a6200'},
+    {label:'> 40%',  val:bands.over,col:'#c0392b'}
+  ];
+  var maxB = Math.max(bands.u25, bands.ok, bands.warn, bands.over, 1);
+  var bW=52, bGap=14, bH=90, bOff=30;
+  var fcSVGW = bData.length*(bW+bGap)+bGap;
+  var fcBars = bData.map(function(b,i){
+    var h = Math.max(b.val>0?6:0, Math.round((b.val/maxB)*bH));
+    var x = bGap + i*(bW+bGap);
+    var y = bOff + bH - h;
+    return '<rect x="'+x+'" y="'+y+'" width="'+bW+'" height="'+h+'" fill="'+b.col+'" rx="5" opacity="0.9"/>' +
+      (b.val>0?'<text x="'+(x+bW/2)+'" y="'+(y-5)+'" text-anchor="middle" font-size="12" fill="'+b.col+'" font-weight="700">'+b.val+'</text>':'') +
+      '<text x="'+(x+bW/2)+'" y="'+(bOff+bH+16)+'" text-anchor="middle" font-size="10" fill="#7a7a76">'+b.label+'</text>';
+  }).join('');
+  var fcChartHTML = '<svg width="100%" viewBox="0 0 '+fcSVGW+' '+(bOff+bH+30)+'" style="display:block;max-width:300px;margin:auto">' +
+    '<line x1="0" y1="'+bOff+'" x2="0" y2="'+(bOff+bH)+'" stroke="#deded8" stroke-width="1"/>' +
+    '<line x1="0" y1="'+(bOff+bH)+'" x2="'+fcSVGW+'" y2="'+(bOff+bH)+'" stroke="#deded8" stroke-width="1"/>' +
+    fcBars + '</svg>' +
+    '<div style="text-align:center;font-size:10px;color:var(--smoke);margin-top:4px">عدد الوصفات حسب نطاق FC%</div>';
+
+  // ── Top 10 horizontal bar chart (SVG) ──
+  var maxCost = top10.length ? top10[0].totalCost : 1;
+  var rowH = 32, topPad = 8;
+  var t10SVGLines = top10.map(function(r,i){
+    var barMax = 170;
+    var bw = Math.max(r.totalCost>0?4:0, Math.round((r.totalCost/maxCost)*barMax));
+    var y = topPad + i*rowH;
+    var nameStr = (r.productName||'').substring(0,18)+(r.productName&&r.productName.length>18?'…':'');
+    var fcStr = r.sellPrice>0 ? r.foodCostPct.toFixed(0)+'%' : '—';
+    var col = fcHex(r.sellPrice>0?r.foodCostPct:30);
+    return '<text x="0" y="'+(y+11)+'" font-size="10" fill="#2c2c2a">'+(i+1)+'. '+nameStr+'</text>' +
+      '<rect x="0" y="'+(y+14)+'" width="'+bw+'" height="7" fill="'+col+'" rx="3" opacity="0.85"/>' +
+      '<text x="'+(bw+5)+'" y="'+(y+21)+'" font-size="10" fill="#7a7a76">'+r.totalCost.toFixed(2)+' ﷼  FC:'+fcStr+'</text>';
+  }).join('');
+  var top10ChartHTML = top10.length ?
+    '<svg width="100%" viewBox="0 0 310 '+(topPad+top10.length*rowH+topPad)+'" style="display:block">' + t10SVGLines + '</svg>' :
+    '<p style="color:var(--smoke);font-size:13px;padding:.5rem">لا توجد وصفات محفوظة</p>';
+
+  // ── Charts row ──
+  var chartsHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
+    '<div class="fcard" style="margin-bottom:0"><h3>📊 توزيع FC% (عدد الوصفات)</h3>' + fcChartHTML + '</div>' +
+    '<div class="fcard" style="margin-bottom:0"><h3>💰 أغلى 10 وصفات (تكلفة الحصة)</h3>' + top10ChartHTML + '</div>' +
+    '</div>';
+
+  // ── Over target table ──
+  var overHTML = overFiltered.length ?
+    '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>' +
+    '<th style="text-align:right;padding:6px 8px;background:var(--paper);border-bottom:1px solid var(--fog);font-size:10px;color:var(--dust)">الوصفة</th>' +
+    '<th style="text-align:center;padding:6px 8px;background:var(--paper);border-bottom:1px solid var(--fog);font-size:10px;color:var(--dust)">FC%</th>' +
+    '<th style="text-align:center;padding:6px 8px;background:var(--paper);border-bottom:1px solid var(--fog);font-size:10px;color:var(--dust)">الهدف</th>' +
+    '<th style="text-align:center;padding:6px 8px;background:var(--paper);border-bottom:1px solid var(--fog);font-size:10px;color:var(--dust)">سعر البيع ﷼</th>' +
+    '<th style="text-align:center;padding:6px 8px;background:var(--paper);border-bottom:1px solid var(--fog);font-size:10px;color:var(--dust)">التكلفة ﷼</th>' +
+    '<th style="text-align:center;padding:6px 8px;background:var(--paper);border-bottom:1px solid var(--fog);font-size:10px;color:var(--dust)">الهامش ﷼</th>' +
+    '</tr></thead><tbody>' +
+    overFiltered.map(function(r){
+      var excess = (r.foodCostPct - FC_TARGET).toFixed(1);
+      return '<tr style="border-bottom:1px solid var(--fog);cursor:pointer" onclick="setNav(\'costing\');pick(\'' + r.sku + '\')">' +
+        '<td style="padding:6px 8px;font-weight:500">' + r.productName + '</td>' +
+        '<td style="text-align:center;padding:6px 8px"><span style="background:var(--hot-bg);color:var(--hot);font-family:\'IBM Plex Mono\',monospace;font-weight:700;font-size:12px;padding:2px 7px;border-radius:4px">' + r.foodCostPct.toFixed(1) + '%</span></td>' +
+        '<td style="text-align:center;padding:6px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--hot)">+' + excess + '%</td>' +
+        '<td style="text-align:center;padding:6px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:12px">' + (r.sellPrice||0).toFixed(2) + '</td>' +
+        '<td style="text-align:center;padding:6px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:12px">' + (r.totalCost||0).toFixed(3) + '</td>' +
+        '<td style="text-align:center;padding:6px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:' + (r.margin>=0?'var(--ok)':'var(--hot)') + '">' + (r.margin||0).toFixed(2) + '</td>' +
+        '</tr>';
+    }).join('') + '</tbody></table>' :
+    '<div style="display:flex;align-items:center;gap:8px;padding:.75rem;color:var(--ok)"><span style="font-size:18px">✓</span><span style="font-size:13px">لا توجد وصفات فوق الهدف في الفلتر الحالي</span></div>';
+
+  // Price history
+  var phHTML = recentPH.length ?
+    '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>' +
+    '<th style="text-align:right;padding:6px 8px;background:var(--paper);border-bottom:1px solid var(--fog);font-size:10px;color:var(--dust)">المادة الخام</th>' +
+    '<th style="text-align:center;padding:6px 8px;background:var(--paper);border-bottom:1px solid var(--fog);font-size:10px;color:var(--dust)">السابق</th>' +
+    '<th style="text-align:center;padding:6px 8px;background:var(--paper);border-bottom:1px solid var(--fog);font-size:10px;color:var(--dust)">الجديد</th>' +
+    '<th style="text-align:center;padding:6px 8px;background:var(--paper);border-bottom:1px solid var(--fog);font-size:10px;color:var(--dust)">التغيير</th>' +
+    '<th style="text-align:center;padding:6px 8px;background:var(--paper);border-bottom:1px solid var(--fog);font-size:10px;color:var(--dust)">التاريخ</th>' +
+    '</tr></thead><tbody>' +
+    recentPH.map(function(h){
+      var diff = h.price - (h.prev||0);
+      var pct = h.prev ? ((diff/h.prev)*100).toFixed(1) : '—';
+      var col = diff > 0 ? 'var(--hot)' : 'var(--ok)';
+      var arrow = diff > 0 ? '▲' : '▼';
+      return '<tr style="border-bottom:1px solid var(--fog)">' +
+        '<td style="padding:6px 8px;font-weight:500">' + (h.name||'—') + '</td>' +
+        '<td style="text-align:center;padding:6px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--dust)">' + (h.prev||0).toFixed(4) + '</td>' +
+        '<td style="text-align:center;padding:6px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:'+col+';font-weight:600">' + h.price.toFixed(4) + '</td>' +
+        '<td style="text-align:center;padding:6px 8px;font-size:11px;color:'+col+';font-weight:600">' + arrow + ' ' + (h.prev?pct+'%':'—') + '</td>' +
+        '<td style="text-align:center;padding:6px 8px;font-size:11px;color:var(--dust)">' + h.date + '</td>' +
+        '</tr>';
+    }).join('') + '</tbody></table>' :
+    '<p style="color:var(--smoke);font-size:13px;padding:.5rem">لا يوجد سجل أسعار بعد</p>';
+
+  document.getElementById('dash-body').innerHTML =
+    filtersHTML +
+    kpiHTML +
+    chartsHTML +
+    card('⚠ الوصفات فوق الهدف (FC% > ' + FC_TARGET + '%)', overHTML) +
+    card('🕐 آخر تغييرات الأسعار', phHTML);
+}
+
+/* ── AUTH ─────────────────────────────────────────────────────── */
+var DEFAULT_USERS = [
+  {username:'admin',      password:'Admin@3in',  role:'accountant', brand:'all', name:'المحاسب'},
+  {username:'ops_ti',     password:'Ops@3in',    role:'ops',        brand:'ti',  name:'عمليات TI'},
+  {username:'ops_bb',     password:'Ops@bb',     role:'ops',        brand:'bb',  name:'عمليات BB'},
+  {username:'kitchen_ti', password:'Ktchn@3in',  role:'kitchen',    brand:'ti',  name:'مطبخ TI'},
+  {username:'kitchen_bb', password:'Ktchn@bb',   role:'kitchen',    brand:'bb',  name:'مطبخ BB'}
+];
+
+function gUsers() {
+  var stored = localStorage.getItem('3in_users');
+  return stored ? JSON.parse(stored) : DEFAULT_USERS;
+}
+function sUsers(v) { localStorage.setItem('3in_users', JSON.stringify(v)); }
+
+function doLogin() {
+  var u = document.getElementById('li-user').value.trim();
+  var p = document.getElementById('li-pass').value;
+  var users = gUsers();
+  var found = users.find(function(x){ return x.username === u && x.password === p; });
+  var err = document.getElementById('login-err');
+  if (!found) { err.classList.add('show'); return; }
+  err.classList.remove('show');
+  sessionStorage.setItem('3in_session', JSON.stringify({username:found.username, name:found.name, role:found.role, brand:found.brand}));
+  applySession(found);
+}
+
+function applySession(user) {
+  document.getElementById('login-screen').classList.add('hidden');
+  // Set role
+  role = user.role;
+  document.body.classList.remove('role-ops','role-kitchen');
+  if (role !== 'accountant') document.body.classList.add('role-' + role);
+  // Set brand restriction
+  if (user.brand !== 'all') {
+    brand = user.brand;
+    document.querySelector('.brand-bar').style.display = 'none';
+  } else {
+    document.querySelector('.brand-bar').style.display = '';
+  }
+  // Update topbar
+  document.getElementById('uinfo').textContent = user.name + ' (' + (user.brand === 'all' ? 'الكل' : user.brand.toUpperCase()) + ')';
+  document.getElementById('btn-umgmt').style.display = role === 'accountant' ? '' : 'none';
+  badge(); renderCsb(); renderCMain();
+  setTimeout(function(){ loadFromSheets(); }, 1200);
+}
+
+function doLogout() {
+  sessionStorage.removeItem('3in_session');
+  document.body.classList.remove('role-ops','role-kitchen');
+  document.querySelector('.brand-bar').style.display = '';
+  document.getElementById('li-user').value = '';
+  document.getElementById('li-pass').value = '';
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+function checkSession() {
+  var s = sessionStorage.getItem('3in_session');
+  if (s) { applySession(JSON.parse(s)); }
+  // else login screen stays visible
+}
+
+/* ── USER MANAGEMENT ──────────────────────────────────────────── */
+function openUmgmt() {
+  renderUmgmt();
+  document.getElementById('umgmt-modal').classList.remove('hidden');
+}
+
+function renderUmgmt() {
+  var users = gUsers();
+  var html = '<table class="umgmt-table"><thead><tr>' +
+    '<th>اسم المستخدم</th><th>كلمة المرور</th><th>الدور</th><th>البراند</th><th></th>' +
+    '</tr></thead><tbody>';
+  users.forEach(function(u) {
+    var roleLabel = u.role === 'accountant' ? 'محاسب' : u.role === 'ops' ? 'عمليات' : 'مطبخ';
+    var brandLabel = u.brand === 'all' ? 'الكل' : u.brand.toUpperCase();
+    var editBtn = '<button class="ibtn ed" onclick="editUser(\'' + u.username + '\')" title="تعديل">✏</button>';
+    var delBtn = u.username === 'admin' ? '' :
+      '<button class="ibtn dl" onclick="deleteUser(\'' + u.username + '\')" title="حذف">🗑</button>';
+    html += '<tr><td><b>' + u.username + '</b></td><td style="font-family:\'IBM Plex Mono\',monospace;font-size:11px">' + u.password + '</td>' +
+      '<td>' + mkPill(u.role==='accountant'?'app-pill':u.role==='ops'?'semi-pill':'cat-pill', roleLabel) + '</td>' +
+      '<td>' + brandLabel + '</td><td style="display:flex;gap:3px">' + editBtn + delBtn + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('umgmt-list').innerHTML = html;
+}
+
+function editUser(username) {
+  var u = gUsers().find(function(x){ return x.username === username; });
+  if (!u) return;
+  document.getElementById('eu-orig').value = username;
+  document.getElementById('eu-user').value = u.username;
+  document.getElementById('eu-pass').value = u.password;
+  document.getElementById('eu-role').value = u.role;
+  document.getElementById('eu-brand').value = u.brand;
+  document.getElementById('edit-user-section').style.display = 'block';
+  document.getElementById('add-user-section').style.display = 'none';
+}
+
+function cancelEditUser() {
+  document.getElementById('edit-user-section').style.display = 'none';
+  document.getElementById('add-user-section').style.display = 'block';
+}
+
+function saveEditUser() {
+  var orig = document.getElementById('eu-orig').value;
+  var u = document.getElementById('eu-user').value.trim();
+  var p = document.getElementById('eu-pass').value.trim();
+  var r = document.getElementById('eu-role').value;
+  var b = document.getElementById('eu-brand').value;
+  if (!u || !p) { toast('اكمل البيانات'); return; }
+  var users = gUsers();
+  var idx = users.findIndex(function(x){ return x.username === orig; });
+  if (idx === -1) return;
+  if (u !== orig && users.find(function(x){ return x.username === u; })) { toast('اسم المستخدم موجود مسبقاً'); return; }
+  users[idx] = {username:u, password:p, role:r, brand:b, name:users[idx].name||u};
+  sUsers(users);
+  renderUmgmt();
+  cancelEditUser();
+  toast('✓ تم تعديل المستخدم: ' + u);
+}
+
+function addUser() {
+  var u = document.getElementById('nu-user').value.trim();
+  var p = document.getElementById('nu-pass').value.trim();
+  var r = document.getElementById('nu-role').value;
+  var b = document.getElementById('nu-brand').value;
+  if (!u || !p) { toast('⚠ أدخل اسم المستخدم وكلمة المرور'); return; }
+  var users = gUsers();
+  if (users.find(function(x){ return x.username === u; })) { toast('⚠ اسم المستخدم موجود'); return; }
+  var roleLabel = r === 'accountant' ? 'محاسب' : r === 'ops' ? 'عمليات' : 'مطبخ';
+  users.push({username:u, password:p, role:r, brand:b, name:roleLabel});
+  sUsers(users);
+  document.getElementById('nu-user').value = '';
+  document.getElementById('nu-pass').value = '';
+  renderUmgmt();
+  toast('✓ تمت الإضافة: ' + u);
+}
+
+function deleteUser(username) {
+  if (!confirm('حذف المستخدم ' + username + '؟')) return;
+  var users = gUsers().filter(function(u){ return u.username !== username; });
+  sUsers(users);
+  renderUmgmt();
+  toast('🗑 تم الحذف');
+}
+
 /* ── INIT ─────────────────────────────────────────────────────── */
-badge();
-renderCsb();
-renderCMain();
-setTimeout(function() { loadFromSheets(); }, 1200);
+checkSession();
 </script>
 </body>
 </html>
