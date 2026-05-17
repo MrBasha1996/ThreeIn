@@ -260,6 +260,7 @@ body.role-ops .price-mc{display:none}
 body.role-ops #sbtn{display:none}
 body.role-ops #fc-warn-badge{display:none}
 body.role-ops #btn-price-upload{display:none}
+body.role-ops #btn-price-upload-lbl{display:none}
 body.role-ops #btn-export{display:none}
 body.role-ops #ntab-dashboard{display:none}
 body.role-ops #ntab-tests{display:none}
@@ -273,6 +274,7 @@ body.role-kitchen .metrics{display:none}
 body.role-kitchen #sbtn{display:none}
 body.role-kitchen #fc-warn-badge{display:none}
 body.role-kitchen #btn-price-upload{display:none}
+body.role-kitchen #btn-price-upload-lbl{display:none}
 body.role-kitchen #btn-export{display:none}
 body.role-kitchen #ntab-dashboard{display:none}
 body.role-kitchen #ntab-products{display:none}
@@ -393,7 +395,8 @@ body.role-kitchen .ph-r .btn{display:none}
     <span class="uinfo" id="uinfo"></span>
     <button class="tbtn" id="btn-umgmt" style="display:none" onclick="openUmgmt()" title="إدارة المستخدمين">👥</button>
     <button class="tbtn" onclick="loadFromSheets()" title="تحميل من Sheets">↻</button>
-    <label id="btn-price-upload" class="tbtn" style="cursor:pointer" title="رفع ملف تحديث الأسعار">
+    <button id="btn-price-upload" class="tbtn" onclick="dlPriceTemplate()" title="تحميل قالب الأسعار">📋 Template</button>
+    <label id="btn-price-upload-lbl" class="tbtn" style="cursor:pointer" title="رفع ملف تحديث الأسعار">
       📤 رفع أسعار
       <input type="file" id="price-upload" accept=".xlsx" style="display:none" onchange="handlePriceUpload(this)">
     </label>
@@ -454,6 +457,12 @@ body.role-kitchen .ph-r .btn{display:none}
         </select>
       </div>
       <div class="field"><label>سعر Dine In ﷼</label><input type="number" id="pf-price" placeholder="0.00" min="0" step="0.5"></div>
+      <div class="field" id="pf-unit-field" style="display:none"><label>وحدة الإنتاج</label>
+        <select id="pf-unit">
+          <option>حصة</option><option>جرام</option><option>كيلو</option>
+          <option>ميليلتر</option><option>لتر</option><option>حبة</option><option>قطعة</option>
+        </select>
+      </div>
     </div>
     <label class="app-toggle-row" id="pf-app-tog">
       <input type="checkbox" id="pf-app-chk" onchange="toggleAPP('pf')">
@@ -733,12 +742,15 @@ function onCatChange() {
   var cat = document.getElementById('pf-cat') ? document.getElementById('pf-cat').value : 'Meal';
   var appRow = document.getElementById('pf-app-tog');
   var priceField = document.querySelector('#pfcard .field input[id="pf-price"]');
+  var unitField = document.getElementById('pf-unit-field');
   if (cat === 'Batch') {
     if (appRow) appRow.style.display = 'none';
     if (priceField) { priceField.value = '0'; priceField.disabled = true; priceField.placeholder = 'لا ينطبق (Batch)'; }
+    if (unitField) unitField.style.display = '';
   } else {
     if (appRow) appRow.style.display = 'flex';
     if (priceField) { priceField.disabled = false; priceField.placeholder = '0.00'; }
+    if (unitField) unitField.style.display = 'none';
   }
 }
 function toggleAPP(px) {
@@ -911,6 +923,14 @@ function upd() {
 
 function addCostRow(d) {
   d = d || {};
+  // Refresh Batch cost from current saved recipe
+  var rSkuCheck = d.sku || d.ingSku || '';
+  if (rSkuCheck && aSP().find(function(s){ return s.sku === rSkuCheck; })) {
+    var bR = gR();
+    if (bR[rSkuCheck] && bR[rSkuCheck].totalCost) {
+      d = Object.assign({}, d, {unitCost: bR[rSkuCheck].totalCost, cost: bR[rSkuCheck].totalCost});
+    }
+  }
   var tb = document.getElementById('ing-tbody');
   if (!tb) return;
   var tr = document.createElement('tr');
@@ -918,10 +938,10 @@ function addCostRow(d) {
   tr.dataset.sku = sku;
   // Check if this is a semi product (unit can be custom)
   var isSemi = d.is_semi || (sku && aSP().find(function(s){return s.sku===sku;}));
-  var hasUnit = sku && d.unit; // ingredient with known unit → lock it
+  var hasUnit = sku && d.unit; // ingredient or batch with known unit → lock it
   var allUnits = ['جرام','كيلو','ميليلتر','لتر','حبة','قطعة','زجاجة','مليلتر','مل','علبة','كيس','وعاء','صحن','طبق','حصة','g','ml','pcs','kg','L'];
   var unitCell;
-  if (hasUnit && !isSemi) {
+  if (hasUnit) {
     // Locked unit — ingredient's own unit, not editable
     unitCell = '<td style="width:12%;text-align:center">' +
       '<span class="usel" style="display:inline-block;padding:2px 6px;background:var(--mist);border-radius:4px;font-size:11px;color:var(--ink2);font-weight:500">' + d.unit + '</span>' +
@@ -1008,11 +1028,6 @@ function acPick(e, sku) {
 }
 
 function onAppCheck() {
-  var chk = document.getElementById('app-on-check');
-  var row = document.getElementById('app-price-row');
-  if (!row) return;
-  row.style.display = chk && chk.checked ? 'flex' : 'none';
-  if (chk && !chk.checked) { var ai = document.getElementById('ai'); if (ai) ai.value = ''; upd(); }
   if (cur) {
     var ap = parseFloat(document.getElementById('ai') ? document.getElementById('ai').value : '') || null;
     var ao = gAO(); ao[cur.sku] = {on: chk && chk.checked, app_price: ap}; sAO(ao);
@@ -1037,9 +1052,7 @@ function renderCMain() {
   var newBadge   = p._custom ? mkPill('new-pill', 'جديد') : '';
   var semiNotice = isSemi ? '<div class="semi-notice">⚙ <strong>منتج وسيط (Batch):</strong> يُصنَّع داخلياً ويُستخدم كمكوّن في منتجات أخرى — لا يُباع مباشرةً</div>' : '';
 
-  var appToggle = '<label class="app-toggle ' + (hasApp ? 'on' : '') + '" style="cursor:pointer">' +
-    '<input type="checkbox" id="app-on-check" ' + (hasApp ? 'checked' : '') + ' onchange="onAppCheck()">' +
-    '<span>' + (hasApp ? '✓ متوفر على APP' : 'APP؟') + '</span></label>';
+  var appToggle = hasApp ? '<span style="font-size:11px;padding:4px 10px;border-radius:var(--r);background:var(--app-bg);color:var(--app);font-weight:600;border:1px solid rgba(107,63,160,.2)">✓ APP</span>' : '';
 
   var dineBox = '<div class="pbox"><div class="pb-lbl">Dine In</div>' +
     '<div class="pb-row"><input class="pb-inp" id="si" type="number" value="' + (sv ? sv.sellPrice : p.price) + '" min="0" step="0.5" oninput="upd()"><span class="pb-unit">﷼</span></div></div>';
@@ -1053,6 +1066,22 @@ function renderCMain() {
     '<div class="mc price-mc" style="border-color:rgba(107,63,160,.2);background:var(--app-bg)"><div class="mc-lbl" style="color:var(--app)">هامش APP</div><div class="mc-val" id="am" style="color:var(--app)">—</div></div>' :
     '<div class="mc price-mc"><div class="mc-lbl">سعر مقترح 32%</div><div class="mc-val" id="ms" style="color:var(--info)">—</div></div>';
 
+  // Batch warning: check if any loaded ingredient is an unsaved Batch
+  var batchProblems = ings.filter(function(ing) {
+    var ingSku = ing.ingSku || ing.sku || '';
+    if (!ingSku) return false;
+    if (!aSP().find(function(s){ return s.sku === ingSku; })) return false;
+    var R2 = gR();
+    return !R2[ingSku] || !R2[ingSku].totalCost;
+  });
+  var batchWarnHTML = batchProblems.length ?
+    '<div style="background:var(--warn-bg);border:1px solid var(--warn);border-radius:var(--r);padding:10px 14px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px">' +
+    '<span style="font-size:18px;flex-shrink:0">⚠</span>' +
+    '<div><div style="font-size:12px;font-weight:600;color:var(--warn);margin-bottom:4px">منتجات وسيطة بدون وصفة محفوظة — التكلفة = 0</div>' +
+    '<div style="font-size:11px;color:var(--warn)">' +
+    batchProblems.map(function(i){ return '• ' + (i.ingName || i.ingSku); }).join('<br>') +
+    '</div><div style="font-size:11px;color:var(--dust);margin-top:4px">احفظ وصفة هذه المنتجات الوسيطة أولاً لضمان دقة التكلفة</div></div></div>' : '';
+
   var savedHTML = renderSavedHTML();
 
   document.getElementById('cmain').innerHTML =
@@ -1065,8 +1094,10 @@ function renderCMain() {
           '<div class="yield-g"><label>حصص</label><input class="yield-inp" id="yi" type="number" value="' + (sv ? sv.yield || 1 : 1) + '" min="1" oninput="upd()"></div>' +
           dineBox + appBox +
         '</div>' +
+        '<button class="btn" onclick="printRecipe()" style="font-size:11px;padding:5px 10px">🖨 طباعة المطبخ</button>' +
       '</div>' +
     '</div>' +
+    batchWarnHTML +
     '<div class="metrics">' +
       '<div class="mc"><div class="mc-lbl">تكلفة/حصة</div><div class="mc-val" id="mc">0.00</div><div class="mc-sub">ريال</div></div>' +
       '<div class="mc price-mc"><div class="mc-lbl">Food Cost%</div><div class="mc-val" id="mfc">—</div></div>' +
@@ -1124,9 +1155,8 @@ function saveRecipe() {
   var rows = getRows().filter(function(x) { return x.ingName; });
   var yi   = parseInt(document.getElementById('yi') ? document.getElementById('yi').value : 1) || 1;
   var sp   = parseFloat(document.getElementById('si') ? document.getElementById('si').value : 0) || 0;
-  var apChk = document.getElementById('app-on-check');
   var ai   = document.getElementById('ai');
-  var ap   = (apChk && apChk.checked && ai) ? (parseFloat(ai.value) || 0) : 0;
+  var ap   = ai ? (parseFloat(ai.value) || 0) : 0;
   var c    = calc();
   var rec  = {
     brand: brand, productName: cur.name, sku: cur.sku, isSemi: !!cur.is_semi,
@@ -1137,10 +1167,100 @@ function saveRecipe() {
   };
   var R = gR(); R[cur.sku] = rec; sR(R); badge();
   syncAction('saveRecipe', {brand: brand, recipe: rec});
+
+  // Cascade: if saving a Batch, refresh cost in all dependent recipes
+  if (rec.isSemi) {
+    var updCount = 0;
+    ['ti','bb'].forEach(function(b) {
+      var bR = JSON.parse(localStorage.getItem('3in_'+b+'_r') || '{}');
+      var changed = false;
+      Object.keys(bR).forEach(function(k) {
+        var r = bR[k];
+        if (!r.ingredients) return;
+        var hit = r.ingredients.find(function(i){ return (i.ingSku||i.sku) === cur.sku; });
+        if (!hit) return;
+        r.ingredients = r.ingredients.map(function(i) {
+          if ((i.ingSku||i.sku) === cur.sku) return Object.assign({}, i, {unitCost: rec.totalCost});
+          return i;
+        });
+        var newTotal = r.ingredients.reduce(function(s, i) {
+          return s + ((i.qty||0) / ((i.yieldPct||100)/100)) * (i.unitCost||0);
+        }, 0);
+        var newPS = newTotal / Math.max(r.yield||1, 1);
+        var newFC = r.sellPrice>0 ? +(newPS/r.sellPrice*100).toFixed(1) : 0;
+        bR[k] = Object.assign({}, r, {
+          totalCost: +newPS.toFixed(4),
+          foodCostPct: newFC,
+          margin: r.sellPrice>0 ? +(r.sellPrice-newPS).toFixed(2) : 0
+        });
+        changed = true; updCount++;
+      });
+      if (changed) localStorage.setItem('3in_'+b+'_r', JSON.stringify(bR));
+    });
+    toast('✓ Batch محفوظ' + (updCount ? ' — تم تحديث ' + updCount + ' وصفة' : ''));
+  }
+
   var btn = document.getElementById('sbtn');
   btn.textContent = '✓'; setTimeout(function() { btn.textContent = 'حفظ'; }, 2000);
   renderCMain();
-  document.getElementById('modal').classList.remove('hidden');
+  if (!rec.isSemi) document.getElementById('modal').classList.remove('hidden');
+}
+
+/* ── KITCHEN PRINT ────────────────────────────────────────────── */
+function printRecipe() {
+  if (!cur) { toast('⚠ اختر منتجاً أولاً'); return; }
+  var rows = getRows().filter(function(r){ return r.ingName; });
+  var yi = document.getElementById('yi') ? (document.getElementById('yi').value || 1) : 1;
+  var bn = brand === 'ti' ? 'Three In' : 'باب البلد';
+  var isSemi = !!cur.is_semi;
+  var html = '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>' + cur.name + '</title>' +
+    '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">' +
+    '<style>' +
+    '*{box-sizing:border-box;margin:0;padding:0}' +
+    'body{font-family:"Noto Sans Arabic",sans-serif;direction:rtl;background:#fff;color:#111;padding:2rem;max-width:680px;margin:auto}' +
+    '.header{border-bottom:3px solid #111;padding-bottom:1rem;margin-bottom:1.5rem}' +
+    '.brand{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#666;margin-bottom:6px}' +
+    'h1{font-size:22px;font-weight:600;margin-bottom:4px}' +
+    '.meta{display:flex;gap:16px;margin-top:8px;font-size:12px;color:#555}' +
+    '.badge{background:#f0f0f0;border-radius:4px;padding:2px 8px;font-weight:500}' +
+    'table{width:100%;border-collapse:collapse;margin-top:1rem}' +
+    'thead th{background:#111;color:#fff;padding:9px 12px;text-align:right;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}' +
+    'tbody tr{border-bottom:1px solid #e0e0e0}' +
+    'tbody tr:nth-child(even){background:#fafafa}' +
+    'tbody tr:last-child{border-bottom:2px solid #111}' +
+    'td{padding:9px 12px;font-size:14px}' +
+    '.num{font-family:"IBM Plex Mono",monospace;font-weight:500;text-align:center}' +
+    '.unit{color:#666;text-align:center;font-size:12px}' +
+    '.rank{color:#aaa;font-size:11px;text-align:center;font-family:"IBM Plex Mono",monospace}' +
+    '.footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #ddd;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#888}' +
+    '.print-btn{padding:8px 18px;background:#111;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit}' +
+    '@media print{.print-btn{display:none}.footer{border-top:none}}' +
+    '</style></head><body>' +
+    '<div class="header">' +
+    '<div class="brand">' + bn + (isSemi ? ' · منتج وسيط (Batch)' : '') + '</div>' +
+    '<h1>' + cur.name + '</h1>' +
+    '<div class="meta"><span class="badge">SKU: ' + cur.sku + '</span><span class="badge">الحصص: ' + yi + '</span><span class="badge">' + rows.length + ' مكوّن</span></div>' +
+    '</div>' +
+    '<table><thead><tr><th style="width:6%">#</th><th>المكوّن</th><th style="width:18%;text-align:center">الكمية</th><th style="width:15%;text-align:center">الوحدة</th></tr></thead><tbody>' +
+    rows.map(function(r, i) {
+      return '<tr>' +
+        '<td class="rank">' + (i+1) + '</td>' +
+        '<td>' + r.ingName + '</td>' +
+        '<td class="num">' + (r.qty || '—') + '</td>' +
+        '<td class="unit">' + (r.unit || '—') + '</td>' +
+        '</tr>';
+    }).join('') +
+    '</tbody></table>' +
+    '<div class="footer">' +
+    '<span>طُبع: ' + new Date().toLocaleString('ar-SA') + '</span>' +
+    '<button class="print-btn" onclick="window.print()">🖨 طباعة</button>' +
+    '</div>' +
+    '</body></html>';
+  var w = window.open('', '_blank', 'width=720,height=900');
+  if (!w) { toast('⚠ السماح بالنوافذ المنبثقة لتفعيل الطباعة'); return; }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(function(){ w.print(); }, 600);
 }
 
 /* ── PRODUCTS CRUD ────────────────────────────────────────────── */
@@ -1245,8 +1365,9 @@ function submitP() {
   } else {
     if (allItems().find(function(p) { return p.sku === sku; })) { toast('⚠ SKU موجود مسبقاً'); return; }
     var isBatch = cat === 'Batch';
+    var batchUnit = isBatch ? (document.getElementById('pf-unit') ? document.getElementById('pf-unit').value : 'حصة') : null;
     var np = {name:name, sku:sku, category:cat, price:price, app_price:appP, _custom:true};
-    if (isBatch) { np.is_semi = true; np.price = 0; }
+    if (isBatch) { np.is_semi = true; np.price = 0; np.unit = batchUnit; }
     CP.push(np); sP(CP);
     if (!isBatch && onApp && appP) { AO[sku] = {on:true,app_price:appP}; sAO(AO); }
     syncAction('saveProduct', {brand:brand, product:np});
@@ -1487,6 +1608,37 @@ regT('gs-save','Sheets — حفظ','إرسال وصفة للـ Sheets',async fun
 regT('gs-load','Sheets — تحميل','قراءة البيانات',async function(){if(location.protocol==='file:'){tlog('  ○ تخطي — file:// protocol','warn');return;}var r=await fetch(GS).then(function(r){return r.json();});assert(Array.isArray(r.recipes),'recipes');assert(Array.isArray(r.products),'products');assert(Array.isArray(r.ingredients),'ingredients');tlog('  ✓ وصفات: '+r.recipes.length+' | منتجات: '+r.products.length,'ok');});
 
 /* ── PRICE UPLOAD ────────────────────────────────────────────── */
+function dlPriceTemplate() {
+  var wb = XLSX.utils.book_new();
+  ['ti','bb'].forEach(function(b) {
+    var bn = b === 'ti' ? 'TI' : 'BB';
+    // Ingredients sheet
+    var ingRows = [['SKU','الاسم','الوحدة','السعر الحالي','السعر الجديد']];
+    var baseIngs = BRANDS[b].ingredients || [];
+    var custIngs = JSON.parse(localStorage.getItem('3in_'+b+'_i')||'[]');
+    var allIngs = baseIngs.concat(custIngs.filter(function(i){
+      return !baseIngs.find(function(x){ return x.sku===i.sku; });
+    }));
+    allIngs.forEach(function(i){
+      ingRows.push([i.sku, i.name, i.unit||'', i.cost||0, '']);
+    });
+    var wsI = XLSX.utils.aoa_to_sheet(ingRows);
+    wsI['!cols'] = [12,32,8,14,14].map(function(w){ return {wch:w}; });
+    XLSX.utils.book_append_sheet(wb, wsI, bn + ' - مواد خام');
+    // Products sheet
+    var prodRows = [['SKU','الاسم','السعر الحالي','السعر الجديد','السعر الجديد APP']];
+    var baseProds = BRANDS[b].products || [];
+    baseProds.forEach(function(p){
+      prodRows.push([p.sku, p.name, p.price||0, '', p.app_price||'']);
+    });
+    var wsP = XLSX.utils.aoa_to_sheet(prodRows);
+    wsP['!cols'] = [12,36,14,14,14].map(function(w){ return {wch:w}; });
+    XLSX.utils.book_append_sheet(wb, wsP, bn + ' - منتجات');
+  });
+  XLSX.writeFile(wb, 'price_template.xlsx');
+  toast('✓ تم تحميل القالب');
+}
+
 var _pendingPriceChanges = null;
 
 function handlePriceUpload(input) {
