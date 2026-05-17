@@ -841,8 +841,7 @@ function pick(sku) {
 /* ── COST CALCULATIONS ────────────────────────────────────────── */
 function getRows() {
   return Array.from(document.querySelectorAll('#ing-tbody tr')).map(function(tr) {
-    // unit: could be hidden input (locked) or select (editable)
-    var uEl = tr.querySelector('.usel');
+    var uEl = tr.querySelector('input.usel,select.usel');
     var unit = uEl ? uEl.value : '';
     var yEl = tr.querySelector('.yinp');
     var yieldPct = yEl ? (parseFloat(yEl.value) || 100) : 100;
